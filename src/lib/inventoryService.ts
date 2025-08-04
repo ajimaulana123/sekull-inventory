@@ -1,6 +1,6 @@
 'use client';
 import { db } from './firebase';
-import { collection, doc, setDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, doc, setDoc, onSnapshot, Unsubscribe, getDocs, writeBatch } from 'firebase/firestore';
 import type { InventoryItem } from '@/types';
 
 const INVENTORY_COLLECTION = 'inventory';
@@ -18,7 +18,7 @@ export function listenToInventoryData(onDataChange: (data: InventoryItem[]) => v
     onDataChange(data);
   }, (error) => {
     console.error("Error listening to inventory data:", error);
-    // Jika terjadi error, kirim array kosong untuk menandakan tidak ada data yang bisa diambil.
+    // On error, provide an empty array to signify no data could be fetched.
     onDataChange([]);
   });
 
@@ -33,9 +33,32 @@ export function listenToInventoryData(onDataChange: (data: InventoryItem[]) => v
  */
 export async function addInventoryItem(item: InventoryItem): Promise<void> {
     const docRef = doc(db, INVENTORY_COLLECTION, item.noData); 
-    // Ensure undefined values are not written to Firestore
+    // Ensure undefined values are not written to Firestore by cleaning the object.
     const cleanedItem = Object.fromEntries(
         Object.entries(item).filter(([_, v]) => v !== undefined)
     );
     await setDoc(docRef, cleanedItem);
+}
+
+/**
+ * WARNING: This function deletes all documents in the inventory collection.
+ * It is intended for debugging and resetting data only.
+ * @returns A promise that resolves when the collection has been cleared.
+ */
+export async function clearInventoryCollection(): Promise<void> {
+  console.warn('Clearing all documents from the inventory collection!');
+  const inventoryCollection = collection(db, INVENTORY_COLLECTION);
+  const snapshot = await getDocs(inventoryCollection);
+  if (snapshot.empty) {
+    console.log('Inventory collection is already empty.');
+    return;
+  }
+  
+  const batch = writeBatch(db);
+  snapshot.docs.forEach(doc => {
+    batch.delete(doc.ref);
+  });
+  
+  await batch.commit();
+  console.log('Successfully cleared the inventory collection.');
 }
