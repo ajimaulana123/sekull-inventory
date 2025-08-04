@@ -4,8 +4,8 @@ import type { ReactNode } from 'react';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { User } from '@/types';
-import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getFirebaseApp } from '@/lib/firebase';
 
 
 interface AuthContextType {
@@ -43,6 +43,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     let userToLogin: User | null = null;
     
+    // Initialize DB on client
+    const db = getFirestore(getFirebaseApp());
+
     // Check if user exists in Firestore
     const userDocRef = doc(db, "users", email);
     const userDoc = await getDoc(userDocRef);

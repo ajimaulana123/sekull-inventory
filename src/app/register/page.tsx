@@ -9,8 +9,8 @@ import Link from 'next/link';
 import { UserPlus } from 'lucide-react';
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc } from "firebase/firestore";
+import { getFirebaseApp } from "@/lib/firebase";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -39,6 +39,8 @@ export default function RegisterPage() {
     }
 
     try {
+      // Initialize DB on client
+      const db = getFirestore(getFirebaseApp());
       // Simpan data pengguna ke Firestore
       // Dalam aplikasi nyata, Anda akan menggunakan Firebase Authentication
       // dan menyimpan ID pengguna, bukan email sebagai ID dokumen.
