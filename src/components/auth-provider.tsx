@@ -4,9 +4,9 @@ import type { ReactNode } from 'react';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import type { User } from '@/types';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
-const adminUser: User = { id: '1', name: 'Admin Sekolah', email: 'admin@sekolah.id', role: 'admin' };
-const regularUser: User = { id: '2', name: 'Guru Biasa', email: 'user@sekolah.id', role: 'user' };
 
 interface AuthContextType {
   user: User | null;
@@ -39,15 +39,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = (email: string) => {
+  const login = async (email: string) => {
     setLoading(true);
     let userToLogin: User | null = null;
-    if (email.toLowerCase() === adminUser.email) {
-      userToLogin = adminUser;
-    } else if (email.toLowerCase() === regularUser.email) {
-      userToLogin = regularUser;
-    }
+    
+    // Check if user exists in Firestore
+    const userDocRef = doc(db, "users", email);
+    const userDoc = await getDoc(userDocRef);
 
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      userToLogin = {
+          id: userDoc.id,
+          name: userData.name,
+          email: userData.email,
+          role: userData.role,
+      };
+    } else {
+        // Fallback for default users if not in firestore (e.g. initial run)
+        if (email.toLowerCase() === 'admin@sekolah.id') {
+            userToLogin = { id: '1', name: 'Admin Sekolah', email: 'admin@sekolah.id', role: 'admin' };
+        } else if (email.endsWith('@sekolah.id')) {
+            const name = email.split('@')[0].replace(/[^a-zA-Z0-9]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            userToLogin = { id: email, name: name, email: email, role: 'user' };
+        }
+    }
+    
     if (userToLogin) {
       localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userToLogin));
       setUser(userToLogin);

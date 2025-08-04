@@ -18,10 +18,11 @@ export default function LoginPage() {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (email === 'admin@sekolah.id' || email === 'user@sekolah.id') {
+    // Updated login logic to be more dynamic
+    if (email.endsWith('@sekolah.id')) {
       login(email);
     } else {
-      setError('Invalid email or password. Use "admin@sekolah.id" or "user@sekolah.id".');
+      setError('Email tidak valid. Gunakan email dengan domain "@sekolah.id".');
     }
   };
 
@@ -43,7 +44,7 @@ export default function LoginPage() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="admin@sekolah.id"
+                  placeholder="anda@sekolah.id"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -62,11 +63,11 @@ export default function LoginPage() {
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
                <p className="text-xs text-muted-foreground">
-                Hint: Gunakan <strong>admin@sekolah.id</strong> (Admin) atau <strong>user@sekolah.id</strong> (User). Password bisa diisi apa saja.
+                Hint: Gunakan <strong>admin@sekolah.id</strong> (Admin) atau email lain dengan domain <strong>@sekolah.id</strong> (User). Password bisa diisi apa saja.
               </p>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Logging in...' : 'Login'}
-              </Button>
+              </button>
             </form>
           </CardContent>
           <CardFooter className="flex justify-center">

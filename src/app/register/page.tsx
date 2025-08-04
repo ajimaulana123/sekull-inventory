@@ -31,6 +31,12 @@ export default function RegisterPage() {
       setLoading(false);
       return;
     }
+    
+    if (!email.endsWith('@sekolah.id')) {
+        setError("Email harus menggunakan domain @sekolah.id");
+        setLoading(false);
+        return;
+    }
 
     try {
       // Simpan data pengguna ke Firestore
@@ -39,7 +45,7 @@ export default function RegisterPage() {
       await setDoc(doc(db, "users", email), {
         name: name,
         email: email,
-        role: 'user' // Default role for new users
+        role: email === 'admin@sekolah.id' ? 'admin' : 'user'
       });
 
       toast({
@@ -74,7 +80,7 @@ export default function RegisterPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="email@anda.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input id="email" type="email" placeholder="namaanda@sekolah.id" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
