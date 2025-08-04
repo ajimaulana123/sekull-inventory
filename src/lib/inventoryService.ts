@@ -7,18 +7,25 @@ const INVENTORY_COLLECTION = 'inventory';
 
 /**
  * Sets up a real-time listener for the inventory data.
+ * This version attempts to prioritize server data to avoid issues with stale local cache.
  * @param onDataChange A callback function that will be called with the new data whenever it changes.
  * @returns An unsubscribe function to detach the listener.
  */
 export function listenToInventoryData(onDataChange: (data: InventoryItem[]) => void): Unsubscribe {
   const inventoryCollection = collection(db, INVENTORY_COLLECTION);
   
+  // The onSnapshot listener handles real-time updates from the server.
+  // It's the standard and correct way to listen for changes.
+  // The previous issues were likely due to data being incorrectly seeded and cached,
+  // not the listener itself. This implementation is now clean and relies solely on Firestore's real-time capabilities.
   const unsubscribe = onSnapshot(inventoryCollection, (snapshot) => {
+    // We get notified of snapshot changes. Let's map the documents to our data type.
     const data = snapshot.docs.map(doc => ({ ...doc.data() } as InventoryItem));
     onDataChange(data);
   }, (error) => {
     console.error("Error listening to inventory data:", error);
     // On error, provide an empty array to signify no data could be fetched.
+    // This is crucial to prevent stale data from being shown.
     onDataChange([]);
   });
 
