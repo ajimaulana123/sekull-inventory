@@ -36,7 +36,12 @@ export async function seedDataIfNotExists() {
 
     staticData.forEach((item) => {
         const docRef = doc(inventoryCollection, item.noData);
-        batch.set(docRef, item);
+        // Firestore doesn't support 'undefined' values.
+        // We need to clean the object before sending it to Firestore.
+        const cleanedItem = Object.fromEntries(
+            Object.entries(item).filter(([_, v]) => v !== undefined)
+        );
+        batch.set(docRef, cleanedItem);
     });
     
     batch.set(metaDocRef, { seeded: true });
