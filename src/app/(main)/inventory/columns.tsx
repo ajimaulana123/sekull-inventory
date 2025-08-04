@@ -1,6 +1,6 @@
 'use client';
 
-import type { ColumnDef } from '@tanstack/react-table';
+import type { ColumnDef, CellContext } from '@tanstack/react-table';
 import type { InventoryItem } from '@/types';
 import { Button } from '@/components/ui/button';
 import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
@@ -8,9 +8,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 
-const ActionsCell = ({ row }: { row: any }) => {
+const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
   const item = row.original;
-  const userRole = row.table.options.meta?.userRole;
+  const userRole = table.options.meta?.userRole;
 
   if (userRole !== 'admin') {
     return null;
