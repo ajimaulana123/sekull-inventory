@@ -1,11 +1,9 @@
+'use client';
 import { db } from './firebase';
 import { collection, getDocs, writeBatch, doc, getDoc, setDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import type { InventoryItem } from '@/types';
-import { inventoryData as staticData } from './data';
 
 const INVENTORY_COLLECTION = 'inventory';
-const META_COLLECTION = 'meta';
-const DATA_SEEDED_DOC = 'dataSeeded';
 
 /**
  * Sets up a real-time listener for the inventory data.
@@ -53,52 +51,11 @@ export async function getInventoryData(): Promise<InventoryItem[]> {
  */
 export async function addInventoryItem(item: InventoryItem): Promise<void> {
     const inventoryCollection = collection(db, INVENTORY_COLLECTION);
-    const docRef = doc(inventoryCollection, item.noData);
+    // Use a unique ID for the document, for example, combining noData and a timestamp or a generated UUID
+    // For simplicity, we're still using noData but this could be risky if not unique.
+    const docRef = doc(inventoryCollection, item.noData); 
     const cleanedItem = Object.fromEntries(
         Object.entries(item).filter(([_, v]) => v !== undefined)
     );
     await setDoc(docRef, cleanedItem);
-}
-
-
-/**
- * Checks if data has been seeded into Firestore. If not, it performs the seeding operation
- * using static data from './data'. This is to prevent re-seeding on every data fetch.
- */
-export async function seedDataIfNotExists() {
-    const metaDocRef = doc(db, META_COLLECTION, DATA_SEEDED_DOC);
-    const metaDoc = await getDoc(metaDocRef);
-
-    if (metaDoc.exists() && metaDoc.data().seeded) {
-        return;
-    }
-    
-    const inventoryCollection = collection(db, INVENTORY_COLLECTION);
-    const snapshot = await getDocs(inventoryCollection);
-    if (!snapshot.empty) {
-        if (!metaDoc.exists()) {
-             await setDoc(metaDocRef, { seeded: true });
-        }
-        return;
-    }
-
-    console.log("Seeding initial data into Firestore...");
-    const batch = writeBatch(db);
-
-    staticData.forEach((item) => {
-        const docRef = doc(inventoryCollection, item.noData);
-        const cleanedItem = Object.fromEntries(
-            Object.entries(item).filter(([_, v]) => v !== undefined)
-        );
-        batch.set(docRef, cleanedItem);
-    });
-    
-    batch.set(metaDocRef, { seeded: true });
-
-    try {
-        await batch.commit();
-        console.log("Initial data seeding successful.");
-    } catch (error) {
-        console.error("Error committing batch for data seeding:", error);
-    }
 }
