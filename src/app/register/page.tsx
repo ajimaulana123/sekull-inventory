@@ -1,25 +1,58 @@
 'use client';
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from 'next/link';
-import { Building, UserPlus } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { db } from "@/lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
 
 export default function RegisterPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Pendaftaran Berhasil",
-      description: "Silakan login menggunakan akun demo.",
-    });
-    router.push('/login');
+    setLoading(true);
+    setError('');
+
+    if (!name || !email || !password) {
+      setError("Semua field harus diisi.");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Simpan data pengguna ke Firestore
+      // Dalam aplikasi nyata, Anda akan menggunakan Firebase Authentication
+      // dan menyimpan ID pengguna, bukan email sebagai ID dokumen.
+      await setDoc(doc(db, "users", email), {
+        name: name,
+        email: email,
+        role: 'user' // Default role for new users
+      });
+
+      toast({
+        title: "Pendaftaran Berhasil",
+        description: "Akun Anda telah dibuat. Silakan login.",
+      });
+      router.push('/login');
+    } catch (err) {
+      console.error("Error registering user:", err);
+      setError("Gagal mendaftarkan pengguna. Silakan coba lagi.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -37,18 +70,19 @@ export default function RegisterPage() {
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Nama Lengkap</Label>
-                <Input id="name" type="text" placeholder="Nama Anda" required />
+                <Input id="name" type="text" placeholder="Nama Anda" required value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="email@anda.com" required />
+                <Input id="email" type="email" placeholder="email@anda.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" type="password" required placeholder="●●●●●●●●" />
+                <Input id="password" type="password" required placeholder="●●●●●●●●" value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
-              <Button type="submit" className="w-full">
-                Register
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Mendaftarkan...' : 'Register'}
               </Button>
             </form>
           </CardContent>
