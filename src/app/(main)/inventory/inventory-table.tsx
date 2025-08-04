@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { columns as columnDefs } from './columns';
 import { PlusCircle, SlidersHorizontal } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface InventoryTableProps {
   data: InventoryItem[];
@@ -28,12 +29,19 @@ export function InventoryTable({ data }: InventoryTableProps) {
   const { user } = useAuth();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
+    select: user?.role === 'admin'
+  });
   const [rowSelection, setRowSelection] = React.useState({});
+
+  const columns = React.useMemo<ColumnDef<InventoryItem>[]>(
+    () => columnDefs.filter(c => user?.role === 'admin' || c.id !== 'select'),
+    [user?.role]
+  )
 
   const table = useReactTable({
     data,
-    columns: columnDefs,
+    columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -52,6 +60,11 @@ export function InventoryTable({ data }: InventoryTableProps) {
       userRole: user?.role
     }
   });
+  
+  React.useEffect(() => {
+    table.getColumn('select')?.toggleVisibility(user?.role === 'admin');
+  }, [user, table]);
+
 
   return (
     <div className="w-full flex-1 flex flex-col">
@@ -110,7 +123,7 @@ export function InventoryTable({ data }: InventoryTableProps) {
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead key={header.id}>
+                      <TableHead key={header.id} className={cn(header.id === 'select' && user?.role !=='admin' && 'hidden')}>
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -131,7 +144,7 @@ export function InventoryTable({ data }: InventoryTableProps) {
                     data-state={row.getIsSelected() && 'selected'}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell key={cell.id} className={cn(cell.column.id === 'select' && user?.role !== 'admin' && 'hidden')}>
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()
@@ -156,7 +169,7 @@ export function InventoryTable({ data }: InventoryTableProps) {
         </CardContent>
       </Card>
       <div className="flex items-center justify-end space-x-2 py-4">
-        <div className="flex-1 text-sm text-muted-foreground">
+        <div className={cn("flex-1 text-sm text-muted-foreground", user?.role !== 'admin' && 'invisible')}>
           {table.getFilteredSelectedRowModel().rows.length} dari{' '}
           {table.getFilteredRowModel().rows.length} baris terpilih.
         </div>

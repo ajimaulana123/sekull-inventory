@@ -12,7 +12,7 @@ const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
   const item = row.original;
   const userRole = table.options.meta?.userRole;
 
-  if (userRole !== 'admin') {
+  if (!userRole) {
     return null;
   }
 
@@ -26,15 +26,21 @@ const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-        <DropdownMenuItem
-          onClick={() => navigator.clipboard.writeText(item.noData)}
-        >
-          Salin Nomor Data
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem>Lihat Detail</DropdownMenuItem>
-        <DropdownMenuItem>Ubah Data</DropdownMenuItem>
-        <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50">Hapus Data</DropdownMenuItem>
+        {userRole === 'admin' ? (
+          <>
+            <DropdownMenuItem
+              onClick={() => navigator.clipboard.writeText(item.noData)}
+            >
+              Salin Nomor Data
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Lihat Detail</DropdownMenuItem>
+            <DropdownMenuItem>Ubah Data</DropdownMenuItem>
+            <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50">Hapus Data</DropdownMenuItem>
+          </>
+        ) : (
+          <DropdownMenuItem>Lihat Detail</DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -43,23 +49,31 @@ const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
 export const columns: ColumnDef<InventoryItem>[] = [
   {
     id: 'select',
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && 'indeterminate')
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
+    header: ({ table }) => {
+      const userRole = table.options.meta?.userRole;
+      if (userRole !== 'admin') return null;
+      return (
+        <Checkbox
+          checked={
+            table.getIsAllPageRowsSelected() ||
+            (table.getIsSomePageRowsSelected() && 'indeterminate')
+          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      )
+    },
+    cell: ({ row, table }) => {
+       const userRole = table.options.meta?.userRole;
+       if (userRole !== 'admin') return null;
+       return (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => row.toggleSelected(!!value)}
+          aria-label="Select row"
+        />
+      )
+    },
     enableSorting: false,
     enableHiding: false,
   },
