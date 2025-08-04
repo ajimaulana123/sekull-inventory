@@ -18,6 +18,7 @@ export function listenToInventoryData(onDataChange: (data: InventoryItem[]) => v
     onDataChange(data);
   }, (error) => {
     console.error("Error listening to inventory data:", error);
+    // Jika terjadi error, kirim array kosong untuk menandakan tidak ada data yang bisa diambil.
     onDataChange([]);
   });
 
