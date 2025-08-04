@@ -60,11 +60,6 @@ export function InventoryTable({ data }: InventoryTableProps) {
       userRole: user?.role
     }
   });
-  
-  React.useEffect(() => {
-    table.getColumn('select')?.toggleVisibility(user?.role === 'admin');
-  }, [user, table]);
-
 
   return (
     <div className="w-full flex-1 flex flex-col">
