@@ -6,15 +6,32 @@ import { DatePickerWithRange } from '@/components/ui/date-picker-range';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Download } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import type { InventoryItem } from '@/types';
+import { getInventoryData } from '@/lib/inventoryService';
 
 export default function LaporanPage() {
     const { user } = useAuth();
     const router = useRouter();
+    const [inventoryData, setInventoryData] = useState<InventoryItem[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (user && user.role !== 'admin') {
             router.replace('/inventory');
+        } else if (user) {
+            const fetchData = async () => {
+                setLoading(true);
+                try {
+                    const data = await getInventoryData();
+                    setInventoryData(data);
+                } catch (error) {
+                    console.error("Error fetching inventory data for reports:", error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            fetchData();
         }
     }, [user, router]);
 
@@ -25,6 +42,21 @@ export default function LaporanPage() {
             </div>
         );
     }
+    
+    if (loading) {
+        return (
+             <div className="flex flex-col gap-6">
+                <div>
+                    <h1 className="text-3xl font-bold font-headline tracking-tight">Laporan Inventaris</h1>
+                    <p className="text-muted-foreground">Buat dan unduh laporan data inventaris sekolah.</p>
+                </div>
+                <div className="flex-1 flex items-center justify-center">
+                    <p>Memuat data untuk laporan...</p>
+                </div>
+            </div>
+        )
+    }
+
   return (
     <div className="flex flex-col gap-6">
         <div>
@@ -34,7 +66,7 @@ export default function LaporanPage() {
         <Card>
             <CardHeader>
                 <CardTitle className="font-headline">Pengaturan Laporan</CardTitle>
-                <CardDescription>Pilih kriteria untuk laporan yang ingin Anda buat.</CardDescription>
+                <CardDescription>Pilih kriteria untuk laporan yang ingin Anda buat. Ditemukan {inventoryData.length} data barang.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">

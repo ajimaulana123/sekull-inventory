@@ -19,6 +19,7 @@ export default function Dashboard() {
       router.replace('/inventory');
     } else if (user) {
        const fetchData = async () => {
+        setLoading(true);
         try {
           const data = await getInventoryData();
           setInventoryData(data);
@@ -35,7 +36,7 @@ export default function Dashboard() {
   if (loading || !user || user.role !== 'admin') {
     return (
       <div className="flex h-full items-center justify-center">
-        <p>Loading or access denied. Redirecting...</p>
+        <p>Memuat data dashboard...</p>
       </div>
     );
   }

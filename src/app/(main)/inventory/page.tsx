@@ -10,6 +10,7 @@ export default function InventoryPage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoading(true);
       try {
         const inventoryData = await getInventoryData();
         setData(inventoryData);
