@@ -20,19 +20,21 @@ import { columns as columnDefs } from './columns';
 import { PlusCircle, SlidersHorizontal } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { InventoryForm } from './inventory-form';
 
 interface InventoryTableProps {
   data: InventoryItem[];
+  refreshData: () => void;
 }
 
-export function InventoryTable({ data }: InventoryTableProps) {
+export function InventoryTable({ data, refreshData }: InventoryTableProps) {
   const { user } = useAuth();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
-    select: user?.role === 'admin'
-  });
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
 
   const columns = React.useMemo<ColumnDef<InventoryItem>[]>(
     () => columnDefs.filter(c => user?.role === 'admin' || c.id !== 'select'),
@@ -60,6 +62,12 @@ export function InventoryTable({ data }: InventoryTableProps) {
       userRole: user?.role
     }
   });
+  
+  const handleFormSuccess = () => {
+    setIsFormOpen(false);
+    refreshData();
+  }
+
 
   return (
     <div className="w-full flex-1 flex flex-col">
@@ -104,9 +112,19 @@ export function InventoryTable({ data }: InventoryTableProps) {
           </DropdownMenuContent>
         </DropdownMenu>
         {user?.role === 'admin' && (
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" /> Tambah Data
-          </Button>
+           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" /> Tambah Data
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Tambah Data Inventaris Baru</DialogTitle>
+              </DialogHeader>
+              <InventoryForm onSuccess={handleFormSuccess} />
+            </DialogContent>
+          </Dialog>
         )}
       </div>
       <Card className="flex-1">

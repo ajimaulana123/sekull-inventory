@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, getDocs, writeBatch, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, writeBatch, doc, getDoc, setDoc } from 'firebase/firestore';
 import type { InventoryItem } from '@/types';
 import { inventoryData as staticData } from './data';
 
@@ -22,10 +22,28 @@ export async function getInventoryData(): Promise<InventoryItem[]> {
   }
 
   // Map the documents from Firestore to the InventoryItem type.
-  const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as (InventoryItem & { id: string })[];
+  const data = snapshot.docs.map(doc => ({ ...doc.data() } as InventoryItem));
   
   return data;
 }
+
+/**
+ * Adds a new inventory item to the Firestore 'inventory' collection.
+ * @param item The inventory item to add.
+ * @returns A promise that resolves when the item has been added.
+ */
+export async function addInventoryItem(item: InventoryItem): Promise<void> {
+    const inventoryCollection = collection(db, INVENTORY_COLLECTION);
+    // Use the unique 'noData' as the document ID.
+    const docRef = doc(inventoryCollection, item.noData);
+     // Firestore doesn't support 'undefined' values.
+    // We need to clean the object by removing keys with undefined values.
+    const cleanedItem = Object.fromEntries(
+        Object.entries(item).filter(([_, v]) => v !== undefined)
+    );
+    await setDoc(docRef, cleanedItem);
+}
+
 
 /**
  * Checks if data has been seeded into Firestore. If not, it performs the seeding operation
@@ -39,10 +57,20 @@ export async function seedDataIfNotExists() {
     if (metaDoc.exists() && metaDoc.data().seeded) {
         return;
     }
+    
+    const inventoryCollection = collection(db, INVENTORY_COLLECTION);
+    const snapshot = await getDocs(inventoryCollection);
+    if (!snapshot.empty) {
+        console.log("Inventory collection is not empty, skipping seed.");
+        if (!metaDoc.exists()) {
+             await setDoc(metaDocRef, { seeded: true });
+        }
+        return;
+    }
+
 
     console.log("Seeding initial data into Firestore...");
     const batch = writeBatch(db);
-    const inventoryCollection = collection(db, INVENTORY_COLLECTION);
 
     staticData.forEach((item) => {
         // Use the unique 'noData' as the document ID.
