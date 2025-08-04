@@ -9,17 +9,13 @@ const DATA_SEEDED_DOC = 'dataSeeded';
 
 /**
  * Fetches inventory data from the Firestore 'inventory' collection.
- * If the collection is empty, it will first seed it with static data.
+ * It will return an empty array if the collection is empty.
  * @returns A promise that resolves to an array of inventory items.
  */
 export async function getInventoryData(): Promise<InventoryItem[]> {
-  // Ensure data is seeded if it's the first run.
-  await seedDataIfNotExists();
-  
   const inventoryCollection = collection(db, INVENTORY_COLLECTION);
   const snapshot = await getDocs(inventoryCollection);
   
-  // If after attempting to seed, the snapshot is still empty, return an empty array.
   if (snapshot.empty) {
     console.log("Firestore 'inventory' collection is empty. Returning empty array.");
     return [];
