@@ -67,7 +67,7 @@ export default function LoginPage() {
               </p>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? 'Logging in...' : 'Login'}
-              </button>
+              </Button>
             </form>
           </CardContent>
           <CardFooter className="flex justify-center">
