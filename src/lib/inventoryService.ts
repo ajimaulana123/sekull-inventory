@@ -1,6 +1,6 @@
 'use client';
 import { db } from './firebase';
-import { collection, getDocs, writeBatch, doc, getDoc, setDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, doc, setDoc, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import type { InventoryItem } from '@/types';
 
 const INVENTORY_COLLECTION = 'inventory';
@@ -18,42 +18,21 @@ export function listenToInventoryData(onDataChange: (data: InventoryItem[]) => v
     onDataChange(data);
   }, (error) => {
     console.error("Error listening to inventory data:", error);
-    // Handle error appropriately, maybe call onDataChange with an empty array or an error state
     onDataChange([]);
   });
 
   return unsubscribe;
 }
 
-
-/**
- * Fetches inventory data from the Firestore 'inventory' collection once.
- * It will return an empty array if the collection is empty.
- * @returns A promise that resolves to an array of inventory items.
- */
-export async function getInventoryData(): Promise<InventoryItem[]> {
-  const inventoryCollection = collection(db, INVENTORY_COLLECTION);
-  const snapshot = await getDocs(inventoryCollection);
-  
-  if (snapshot.empty) {
-    return [];
-  }
-
-  const data = snapshot.docs.map(doc => ({ ...doc.data() } as InventoryItem));
-  
-  return data;
-}
-
 /**
  * Adds a new inventory item to the Firestore 'inventory' collection.
+ * The document ID will be the 'noData' field of the item.
  * @param item The inventory item to add.
  * @returns A promise that resolves when the item has been added.
  */
 export async function addInventoryItem(item: InventoryItem): Promise<void> {
-    const inventoryCollection = collection(db, INVENTORY_COLLECTION);
-    // Use a unique ID for the document, for example, combining noData and a timestamp or a generated UUID
-    // For simplicity, we're still using noData but this could be risky if not unique.
-    const docRef = doc(inventoryCollection, item.noData); 
+    const docRef = doc(db, INVENTORY_COLLECTION, item.noData); 
+    // Ensure undefined values are not written to Firestore
     const cleanedItem = Object.fromEntries(
         Object.entries(item).filter(([_, v]) => v !== undefined)
     );

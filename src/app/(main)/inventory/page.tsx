@@ -8,16 +8,15 @@ export default function InventoryPage() {
   const [data, setData] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // We need a stable refresh function to pass to the table, but the actual data
-  // will come from the real-time listener. This function is now a no-op but
-  // is kept for prop compatibility if other actions need to trigger a manual refresh.
+  // This function is passed to the form to trigger a re-render/refresh if needed,
+  // but the primary data source is the real-time listener.
   const refreshData = useCallback(() => {
-    // The listener already handles data updates, so this can be empty
-    // or could contain logic for a manual re-fetch if needed in the future.
+    // The listener handles updates, so this can be a no-op.
   }, []);
 
   useEffect(() => {
     setLoading(true);
+    // Subscribe to real-time inventory data
     const unsubscribe = listenToInventoryData((inventoryData) => {
       setData(inventoryData);
       setLoading(false);
