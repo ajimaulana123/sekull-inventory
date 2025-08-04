@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import type { InventoryItem } from '@/types';
-import { getInventoryData } from '@/lib/inventoryService';
+import { listenToInventoryData } from '@/lib/inventoryService';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -18,18 +18,12 @@ export default function Dashboard() {
     if (user && user.role !== 'admin') {
       router.replace('/inventory');
     } else if (user) {
-       const fetchData = async () => {
-        setLoading(true);
-        try {
-          const data = await getInventoryData();
-          setInventoryData(data);
-        } catch (error) {
-          console.error("Error fetching inventory data for dashboard:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchData();
+      setLoading(true);
+      const unsubscribe = listenToInventoryData((data) => {
+        setInventoryData(data);
+        setLoading(false);
+      });
+      return () => unsubscribe(); // Cleanup listener
     }
   }, [user, router]);
   
