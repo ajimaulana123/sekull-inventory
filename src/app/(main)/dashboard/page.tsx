@@ -1,26 +1,41 @@
 'use client';
 import { useAuth } from '@/components/auth-provider';
-import { inventoryData } from '@/lib/data';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { DollarSign, Package, PackageCheck, PackageX } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import type { InventoryItem } from '@/types';
+import { getInventoryData } from '@/lib/inventoryService';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const router = useRouter();
+  const [inventoryData, setInventoryData] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (user && user.role !== 'admin') {
       router.replace('/inventory');
+    } else if (user) {
+       const fetchData = async () => {
+        try {
+          const data = await getInventoryData();
+          setInventoryData(data);
+        } catch (error) {
+          console.error("Error fetching inventory data for dashboard:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchData();
     }
   }, [user, router]);
-
-  if (!user || user.role !== 'admin') {
+  
+  if (loading || !user || user.role !== 'admin') {
     return (
       <div className="flex h-full items-center justify-center">
-        <p>Access denied. Redirecting...</p>
+        <p>Loading or access denied. Redirecting...</p>
       </div>
     );
   }
