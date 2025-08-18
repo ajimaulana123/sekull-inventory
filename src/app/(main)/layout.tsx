@@ -5,7 +5,7 @@ import { useAuth } from '@/components/auth-provider';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Archive, Bell, Building, CircleUser, FileText, Home, LayoutDashboard, LogOut, Menu, Package, Package2, Search, Users } from 'lucide-react';
@@ -90,6 +90,9 @@ export default function MainAppLayout({ children }: { children: React.ReactNode 
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col p-0">
+               <SheetHeader>
+                 <SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
+               </SheetHeader>
               {sidebarContent}
             </SheetContent>
           </Sheet>
