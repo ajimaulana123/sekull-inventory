@@ -21,7 +21,10 @@ export function listenToInventoryData(onDataChange: (data: InventoryItem[]) => v
   return unsubscribe;
 }
 
-export async function addInventoryItem(item: InventoryItem): Promise<void> {
+export async function saveInventoryItem(item: InventoryItem): Promise<void> {
+    // This function handles both adding and updating items.
+    // setDoc with merge:true will create a new doc if it doesn't exist,
+    // or update it if it does, based on the `item.noData` ID.
     const docRef = doc(db, INVENTORY_COLLECTION, item.noData);
     const cleanedItem = Object.fromEntries(
         Object.entries(item).filter(([_, v]) => v !== undefined && v !== null)

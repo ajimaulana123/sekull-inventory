@@ -39,9 +39,11 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isDetailOpen, setIsDetailOpen] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState<InventoryItem | null>(null);
+
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = React.useState(false);
   const [itemsToDelete, setItemsToDelete] = React.useState<string[]>([]);
   const [isDeleting, setIsDeleting] = React.useState(false);
@@ -51,7 +53,17 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
     setSelectedItem(item);
     setIsDetailOpen(true);
   };
+
+  const handleEditItem = (item: InventoryItem) => {
+    setSelectedItem(item);
+    setIsFormOpen(true);
+  };
   
+  const handleAddNewItem = () => {
+    setSelectedItem(null); // Clear selected item for new entry
+    setIsFormOpen(true);
+  };
+
   const handleDeleteRequest = (itemIds: string[]) => {
       setItemsToDelete(itemIds);
       setIsConfirmDeleteDialogOpen(true);
@@ -106,11 +118,13 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
       userRole: user?.role,
       viewDetails: handleViewDetails,
       deleteItems: handleDeleteRequest,
+      editItem: handleEditItem,
     }
   });
   
   const handleFormSuccess = () => {
     setIsFormOpen(false);
+    setSelectedItem(null);
     refreshData();
   }
 
@@ -173,15 +187,15 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
         {user?.role === 'admin' && (
            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button onClick={handleAddNewItem}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Tambah Data
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Tambah Data Inventaris Baru</DialogTitle>
+                <DialogTitle>{selectedItem ? 'Ubah Data Inventaris' : 'Tambah Data Inventaris Baru'}</DialogTitle>
               </DialogHeader>
-              <InventoryForm onSuccess={handleFormSuccess} />
+              <InventoryForm onSuccess={handleFormSuccess} initialData={selectedItem} />
             </DialogContent>
           </Dialog>
         )}

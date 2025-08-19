@@ -6,15 +6,15 @@ import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { addInventoryItem } from '@/lib/inventoryService';
+import { saveInventoryItem } from '@/lib/inventoryService';
 import { useToast } from '@/hooks/use-toast';
 import { inventoryItemSchema, type InventoryItem } from '@/types';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Separator } from '@/components/ui/separator';
 
 interface InventoryFormProps {
   onSuccess: () => void;
-  initialData?: InventoryItem;
+  initialData?: InventoryItem | null;
 }
 
 const formSchema = inventoryItemSchema;
@@ -23,6 +23,7 @@ type InventoryFormValues = z.infer<typeof formSchema>;
 export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const isEditing = !!initialData;
   
   const form = useForm<InventoryFormValues>({
     resolver: zodResolver(formSchema),
@@ -49,6 +50,12 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
     },
   });
 
+  useEffect(() => {
+    if (initialData) {
+      form.reset(initialData);
+    }
+  }, [initialData, form]);
+
   async function onSubmit(values: InventoryFormValues) {
     setIsLoading(true);
     try {
@@ -62,19 +69,19 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
           disposalRekapCode: values.disposalStatus === 'dihapus' ? `${values.mainItemLetter}${values.subItemTypeCode}-HAPUS` : undefined,
       };
       
-      await addInventoryItem(fullItem);
+      await saveInventoryItem(fullItem);
       
       toast({
         title: 'Sukses!',
-        description: 'Data inventaris baru berhasil ditambahkan.',
+        description: `Data inventaris berhasil ${isEditing ? 'diperbarui' : 'ditambahkan'}.`,
       });
       onSuccess();
     } catch (error) {
-      console.error('Failed to add inventory item:', error);
+      console.error('Failed to save inventory item:', error);
       toast({
         variant: 'destructive',
         title: 'Gagal!',
-        description: 'Gagal menambahkan data. Silakan periksa kembali isian Anda.',
+        description: `Gagal menyimpan data. Silakan periksa kembali isian Anda.`,
       });
     } finally {
         setIsLoading(false);
@@ -91,7 +98,7 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
         <div>
             <h3 className="text-lg font-medium mb-4">Data Utama Barang</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField control={form.control} name="noData" render={({ field }) => ( <FormItem><FormLabel>Nomor Data</FormLabel><FormControl><Input placeholder="1" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="noData" render={({ field }) => ( <FormItem><FormLabel>Nomor Data</FormLabel><FormControl><Input placeholder="1" {...field} disabled={isEditing} /></FormControl><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="itemType" render={({ field }) => ( <FormItem><FormLabel>Jenis Barang</FormLabel><FormControl><Input placeholder="MEJA" {...field} /></FormControl><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="mainItemNumber" render={({ field }) => ( <FormItem><FormLabel>Induk No. Barang</FormLabel><FormControl><Input placeholder="1" {...field} /></FormControl><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="mainItemLetter" render={({ field }) => ( <FormItem><FormLabel>Induk Huruf Barang</FormLabel><FormControl><Input placeholder="A" {...field} /></FormControl><FormMessage /></FormItem> )} />
@@ -148,7 +155,7 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
         </div>
 
         <Button type="submit" disabled={isLoading} className="w-full mt-8">
-            {isLoading ? "Menyimpan..." : "Simpan Data Inventaris"}
+            {isLoading ? "Menyimpan..." : (isEditing ? "Simpan Perubahan" : "Simpan Data Inventaris")}
         </Button>
       </form>
     </Form>
