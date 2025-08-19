@@ -10,7 +10,7 @@ import { getFirebaseApp } from '@/lib/firebase';
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string) => void;
+  login: (email: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -40,7 +40,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string) => {
-    setLoading(true);
     let userToLogin: User | null = null;
     
     // Initialize DB on client
@@ -73,9 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(userToLogin);
       router.push('/dashboard');
     } else {
-      // Handle invalid login in the form component
+      // The component will handle the error message
+      throw new Error("Invalid user");
     }
-    setLoading(false);
   };
 
   const logout = () => {

@@ -13,16 +13,25 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login, loading } = useAuth();
+  const { login } = useAuth();
+  const [loginLoading, setLoginLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    // Updated login logic to be more dynamic
-    if (email.endsWith('@sekolah.id')) {
-      login(email);
-    } else {
-      setError('Email tidak valid. Gunakan email dengan domain "@sekolah.id".');
+    setLoginLoading(true);
+    
+    try {
+        if (email.endsWith('@sekolah.id')) {
+            await login(email);
+            // On success, the auth provider will redirect.
+        } else {
+            setError('Email tidak valid. Gunakan email dengan domain "@sekolah.id".');
+            setLoginLoading(false);
+        }
+    } catch (err) {
+        setError('Login gagal. Silakan coba lagi.');
+        setLoginLoading(false);
     }
   };
 
@@ -48,6 +57,7 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  disabled={loginLoading}
                 />
               </div>
               <div className="space-y-2">
@@ -59,14 +69,15 @@ export default function LoginPage() {
                   placeholder="●●●●●●●●"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  disabled={loginLoading}
                 />
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
                <p className="text-xs text-muted-foreground">
                 Hint: Gunakan <strong>admin@sekolah.id</strong> (Admin) atau email lain dengan domain <strong>@sekolah.id</strong> (User). Password bisa diisi apa saja.
               </p>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Logging in...' : 'Login'}
+              <Button type="submit" className="w-full" disabled={loginLoading}>
+                {loginLoading ? 'Logging in...' : 'Login'}
               </Button>
             </form>
           </CardContent>
