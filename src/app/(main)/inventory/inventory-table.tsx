@@ -17,13 +17,15 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { columns as columnDefs } from './columns';
-import { PlusCircle, SlidersHorizontal } from 'lucide-react';
+import { PlusCircle, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { InventoryForm } from './inventory-form';
 import { InventoryDetail } from './inventory-detail';
-
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { deleteInventoryItems } from '@/lib/inventoryService';
+import { useToast } from '@/hooks/use-toast';
 
 interface InventoryTableProps {
   data: InventoryItem[];
@@ -32,6 +34,7 @@ interface InventoryTableProps {
 
 export function InventoryTable({ data, refreshData }: InventoryTableProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
@@ -39,11 +42,42 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isDetailOpen, setIsDetailOpen] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState<InventoryItem | null>(null);
+  const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = React.useState(false);
+  const [itemsToDelete, setItemsToDelete] = React.useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = React.useState(false);
 
 
   const handleViewDetails = (item: InventoryItem) => {
     setSelectedItem(item);
     setIsDetailOpen(true);
+  };
+  
+  const handleDeleteRequest = (itemIds: string[]) => {
+      setItemsToDelete(itemIds);
+      setIsConfirmDeleteDialogOpen(true);
+  };
+  
+  const confirmDelete = async () => {
+      setIsDeleting(true);
+      try {
+          await deleteInventoryItems(itemsToDelete);
+          toast({
+              title: "Sukses!",
+              description: `${itemsToDelete.length} data berhasil dihapus.`
+          });
+          table.resetRowSelection(); // Deselect all rows after deletion
+      } catch (error) {
+          console.error("Failed to delete items:", error);
+          toast({
+              variant: "destructive",
+              title: "Gagal!",
+              description: "Terjadi kesalahan saat menghapus data."
+          });
+      } finally {
+          setIsDeleting(false);
+          setItemsToDelete([]);
+          setIsConfirmDeleteDialogOpen(false);
+      }
   };
 
   const columns = React.useMemo<ColumnDef<InventoryItem>[]>(
@@ -71,6 +105,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
     meta: {
       userRole: user?.role,
       viewDetails: handleViewDetails,
+      deleteItems: handleDeleteRequest,
     }
   });
   
@@ -91,9 +126,22 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
           }
           className="max-w-sm"
         />
+        {table.getFilteredSelectedRowModel().rows.length > 0 && user?.role === 'admin' && (
+             <Button 
+                variant="destructive" 
+                className="ml-auto"
+                onClick={() => {
+                    const selectedIds = table.getFilteredSelectedRowModel().rows.map(row => row.original.noData);
+                    handleDeleteRequest(selectedIds);
+                }}
+             >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Hapus ({table.getFilteredSelectedRowModel().rows.length})
+            </Button>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="ml-auto">
+            <Button variant="outline" className={cn(table.getFilteredSelectedRowModel().rows.length > 0 ? 'ml-2' : 'ml-auto')}>
               <SlidersHorizontal className="mr-2 h-4 w-4" /> Tampilkan Kolom
             </Button>
           </DropdownMenuTrigger>
@@ -224,6 +272,22 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
           {selectedItem && <InventoryDetail item={selectedItem} />}
         </DialogContent>
       </Dialog>
+      <AlertDialog open={isConfirmDeleteDialogOpen} onOpenChange={setIsConfirmDeleteDialogOpen}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      Tindakan ini akan menghapus {itemsToDelete.length} data barang secara permanen. Data yang sudah dihapus tidak dapat dikembalikan.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel onClick={() => setIsConfirmDeleteDialogOpen(false)}>Batal</AlertDialogCancel>
+                  <AlertDialogAction onClick={confirmDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                      {isDeleting ? "Menghapus..." : "Ya, Hapus Data"}
+                  </AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

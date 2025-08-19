@@ -14,6 +14,9 @@ const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const viewDetails = table.options.meta?.viewDetails;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const deleteItems = table.options.meta?.deleteItems;
 
 
   if (!userRole) {
@@ -42,7 +45,12 @@ const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
               Salin Nomor Data
             </DropdownMenuItem>
             <DropdownMenuItem>Ubah Data</DropdownMenuItem>
-            <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50">Hapus Data</DropdownMenuItem>
+            <DropdownMenuItem 
+              className="text-red-600 focus:text-red-600 focus:bg-red-50"
+              onClick={() => deleteItems([item.noData])}
+            >
+              Hapus Data
+            </DropdownMenuItem>
           </>
         )}
       </DropdownMenuContent>
