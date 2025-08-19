@@ -7,10 +7,13 @@ import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
   const item = row.original;
   const userRole = table.options.meta?.userRole;
+  const { toast } = useToast();
+
   // eslint-disable-next-line @typescript-eslint/ban-ts-comment
   // @ts-ignore
   const viewDetails = table.options.meta?.viewDetails;
@@ -25,6 +28,23 @@ const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
   if (!userRole) {
     return null;
   }
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(item.noData);
+      toast({
+        title: 'Berhasil!',
+        description: 'Nomor data berhasil disalin ke clipboard.',
+      });
+    } catch (err) {
+      toast({
+        variant: 'destructive',
+        title: 'Gagal!',
+        description: 'Tidak dapat menyalin nomor data.',
+      });
+    }
+  };
+
 
   return (
     <DropdownMenu>
@@ -42,9 +62,7 @@ const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
         {userRole === 'admin' && (
           <>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(item.noData)}
-            >
+            <DropdownMenuItem onClick={handleCopy}>
               Salin Nomor Data
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => editItem(item)}>Ubah Data</DropdownMenuItem>
