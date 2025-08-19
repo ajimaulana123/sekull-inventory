@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -14,12 +14,13 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 
-const NavLink = ({ href, children, icon: Icon }: { href: string; children: React.ReactNode; icon: React.ElementType }) => {
+const NavLink = ({ href, children, icon: Icon, onClick }: { href: string; children: React.ReactNode; icon: React.ElementType, onClick?: () => void }) => {
   const pathname = usePathname();
   const isActive = pathname === href;
   return (
     <Link
       href={href}
+      onClick={onClick}
       className={cn(
         "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary",
         isActive && "bg-muted text-primary"
@@ -34,6 +35,7 @@ const NavLink = ({ href, children, icon: Icon }: { href: string; children: React
 export default function MainAppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -48,6 +50,10 @@ export default function MainAppLayout({ children }: { children: React.ReactNode 
       </div>
     );
   }
+
+  const handleNavLinkClick = () => {
+    setIsSheetOpen(false);
+  };
 
   const navLinks = [
     { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
@@ -68,7 +74,7 @@ export default function MainAppLayout({ children }: { children: React.ReactNode 
       <div className="flex-1">
         <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
           {filteredNavLinks.map(link => (
-            <NavLink key={link.href} href={link.href} icon={link.icon}>{link.label}</NavLink>
+            <NavLink key={link.href} href={link.href} icon={link.icon} onClick={handleNavLinkClick}>{link.label}</NavLink>
           ))}
         </nav>
       </div>
@@ -82,7 +88,7 @@ export default function MainAppLayout({ children }: { children: React.ReactNode 
       </div>
       <div className="flex flex-col">
         <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
-          <Sheet>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" className="shrink-0 md:hidden">
                 <Menu className="h-5 w-5" />
@@ -90,8 +96,8 @@ export default function MainAppLayout({ children }: { children: React.ReactNode 
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="flex flex-col p-0">
-               <SheetHeader>
-                 <SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
+               <SheetHeader className="sr-only">
+                 <SheetTitle>Menu Navigasi</SheetTitle>
                </SheetHeader>
               {sidebarContent}
             </SheetContent>
