@@ -11,6 +11,10 @@ import { Badge } from '@/components/ui/badge';
 const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
   const item = row.original;
   const userRole = table.options.meta?.userRole;
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const viewDetails = table.options.meta?.viewDetails;
+
 
   if (!userRole) {
     return null;
@@ -26,20 +30,20 @@ const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-        {userRole === 'admin' ? (
+         <DropdownMenuItem onClick={() => viewDetails(item)}>
+            Lihat Detail
+         </DropdownMenuItem>
+        {userRole === 'admin' && (
           <>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => navigator.clipboard.writeText(item.noData)}
             >
               Salin Nomor Data
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Lihat Detail</DropdownMenuItem>
             <DropdownMenuItem>Ubah Data</DropdownMenuItem>
             <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50">Hapus Data</DropdownMenuItem>
           </>
-        ) : (
-          <DropdownMenuItem>Lihat Detail</DropdownMenuItem>
         )}
       </DropdownMenuContent>
     </DropdownMenu>

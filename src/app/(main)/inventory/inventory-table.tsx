@@ -22,6 +22,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { InventoryForm } from './inventory-form';
+import { InventoryDetail } from './inventory-detail';
+
 
 interface InventoryTableProps {
   data: InventoryItem[];
@@ -35,6 +37,14 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [isDetailOpen, setIsDetailOpen] = React.useState(false);
+  const [selectedItem, setSelectedItem] = React.useState<InventoryItem | null>(null);
+
+
+  const handleViewDetails = (item: InventoryItem) => {
+    setSelectedItem(item);
+    setIsDetailOpen(true);
+  };
 
   const columns = React.useMemo<ColumnDef<InventoryItem>[]>(
     () => columnDefs.filter(c => user?.role === 'admin' || c.id !== 'select'),
@@ -59,7 +69,8 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
       rowSelection,
     },
     meta: {
-      userRole: user?.role
+      userRole: user?.role,
+      viewDetails: handleViewDetails,
     }
   });
   
@@ -205,6 +216,14 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
           </Button>
         </div>
       </div>
+       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detail Barang Inventaris</DialogTitle>
+          </DialogHeader>
+          {selectedItem && <InventoryDetail item={selectedItem} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
