@@ -18,7 +18,7 @@ type ReportType = 'all' | 'active' | 'disposed' | 'procurement';
 type FileFormat = 'csv' | 'xlsx' | 'pdf';
 
 // Mapping untuk header kolom ke Bahasa Indonesia
-const headerMapping: { [key in keyof Required<InventoryItem>]: string } = {
+const headerMapping: { [key in keyof Required<InventoryItem>]?: string } = {
     noData: "No. Data",
     itemType: "Jenis Barang",
     mainItemNumber: "Induk No. Barang",
@@ -107,28 +107,36 @@ export default function LaporanPage() {
     }
     
     const transformDataForExport = (data: InventoryItem[]) => {
-        // Tentukan header yang akan diekspor (semua kecuali yang opsional & kosong)
         const headers = (Object.keys(headerMapping) as (keyof InventoryItem)[]).filter(key => {
             if (reportType !== 'disposed' && key.startsWith('disposal')) {
                 if (key !== 'disposalStatus') return false;
             }
-            // Optional: Exclude certain complex codes if not needed
-            // if (key.toLowerCase().includes('code')) return false;
             return true;
         });
 
-        const translatedHeaders = headers.map(key => headerMapping[key]);
+        const translatedHeaders = headers.map(key => headerMapping[key as keyof typeof headerMapping] || key);
+
         const body = data.map(item => {
             return headers.map(header => {
-                const value = item[header];
+                const value = item[header as keyof InventoryItem];
                  if (header === 'estimatedPrice') {
                     return new Intl.NumberFormat('id-ID').format(Number(value) || 0);
                 }
-                return value ?? ''; // Berikan string kosong jika nilainya null atau undefined
+                return value ?? ''; 
             });
         });
+        
+        const dataWithIndonesianHeaders = data.map(item => {
+            let newObj: Record<string, any> = {};
+            (Object.keys(item) as (keyof InventoryItem)[]).forEach(key => {
+                const newKey = headerMapping[key as keyof typeof headerMapping] || key;
+                newObj[newKey] = item[key as keyof InventoryItem];
+            });
+            return newObj;
+        });
 
-        return { translatedHeaders, body };
+
+        return { translatedHeaders, body, dataWithIndonesianHeaders };
     };
 
 
@@ -148,24 +156,15 @@ export default function LaporanPage() {
             return;
         }
 
-        const { translatedHeaders, body: mappedBody } = transformDataForExport(dataToExport);
+        const { translatedHeaders, body: mappedBody, dataWithIndonesianHeaders } = transformDataForExport(dataToExport);
 
         try {
             if (fileFormat === 'csv' || fileFormat === 'xlsx') {
-                 const dataWithIndonesianHeaders = dataToExport.map(item => {
-                    let newObj: Record<string, any> = {};
-                    (Object.keys(item) as (keyof InventoryItem)[]).forEach(key => {
-                        const newKey = headerMapping[key] || key;
-                        newObj[newKey] = item[key];
-                    });
-                    return newObj;
-                });
-
                 if (fileFormat === 'csv') {
                     const XLSX = await import('xlsx');
                     const worksheet = XLSX.utils.json_to_sheet(dataWithIndonesianHeaders);
                     const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
-                    const blob = new Blob([csvOutput], { type: 'text/csv;charset=utf-8;' });
+                    const blob = new Blob(["\uFEFF" + csvOutput], { type: 'text/csv;charset=utf-8;' });
                     triggerBrowserDownload(blob, `${fileName}.csv`);
                 } else { // xlsx
                     const XLSX = await import('xlsx');
@@ -176,8 +175,7 @@ export default function LaporanPage() {
                 }
             } else if (fileFormat === 'pdf') {
                 const { default: jsPDF } = await import('jspdf');
-                const { default: autoTable } = await import('jspdf-autotable');
-                const doc = new jsPDF({ orientation: 'landscape' });
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
                 
                 const reportDate = format(new Date(), "d MMMM yyyy", { locale: id });
                 let subTitle = `Per Tanggal: ${reportDate}`;
@@ -185,38 +183,94 @@ export default function LaporanPage() {
                      subTitle = `Periode: ${format(dateRange.from, "d MMM yyyy", { locale: id })} - ${format(dateRange.to, "d MMM yyyy", { locale: id })}`;
                 }
 
-                autoTable(doc, {
-                    head: [translatedHeaders],
-                    body: mappedBody,
-                    startY: 28,
-                    theme: 'grid',
-                    headStyles: { fillColor: [52, 124, 51], textColor: 255 },
-                    styles: { fontSize: 8 },
-                    didDrawPage: (data) => {
-                         // Header
-                         doc.setFontSize(16);
-                         doc.setFont('helvetica', 'bold');
-                         doc.text(reportTitle, data.settings.margin.left, 15);
-                         doc.setFontSize(10);
-                         doc.setFont('helvetica', 'normal');
-                         doc.text(subTitle, data.settings.margin.left, 22);
+                const pageMargin = 15;
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const contentWidth = pageWidth - (pageMargin * 2);
+                let yPos = pageMargin;
+                let pageNumber = 1;
 
-                         // Footer
-                         const pageCount = doc.getNumberOfPages();
-                         doc.setFontSize(8);
-                         doc.text(
-                            `Halaman ${data.pageNumber} dari ${pageCount}`,
-                            data.settings.margin.left,
-                            doc.internal.pageSize.height - 10
-                         );
-                         doc.text(
-                            `Dicetak pada: ${reportDate}`,
-                            doc.internal.pageSize.width - data.settings.margin.right,
-                            doc.internal.pageSize.height - 10,
-                            { align: 'right' }
-                         );
+                const addHeaderFooter = () => {
+                    // Header
+                    doc.setFont('helvetica', 'bold');
+                    doc.setFontSize(16);
+                    doc.text(reportTitle, pageWidth / 2, yPos, { align: 'center' });
+                    yPos += 7;
+                    doc.setFont('helvetica', 'normal');
+                    doc.setFontSize(10);
+                    doc.text(subTitle, pageWidth / 2, yPos, { align: 'center' });
+                    yPos += 10;
+                    doc.setDrawColor(180, 180, 180);
+                    doc.line(pageMargin, yPos, pageWidth - pageMargin, yPos);
+                    yPos += 10;
+
+                    // Footer
+                    const footerY = pageHeight - 10;
+                    doc.setFontSize(8);
+                    doc.text(`Halaman ${pageNumber} dari ${doc.getNumberOfPages()}`, pageMargin, footerY);
+                    doc.text(`Dicetak pada: ${reportDate}`, pageWidth - pageMargin, footerY, { align: 'right' });
+                };
+
+                addHeaderFooter();
+
+                dataToExport.forEach((item, index) => {
+                    const itemStartY = yPos;
+                    doc.setFontSize(11);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(`BARANG #${index + 1}: ${item.itemType} - ${item.brand}`, pageMargin, yPos);
+                    yPos += 6;
+
+                    doc.setFontSize(9);
+                    doc.setFont('helvetica', 'normal');
+                    
+                    const itemDetails = Object.entries(item)
+                        .map(([key, value]) => {
+                            const label = headerMapping[key as keyof typeof headerMapping];
+                            if (label && value !== undefined && value !== null && value !== '') {
+                                let displayValue = value;
+                                if (key === 'estimatedPrice') {
+                                    displayValue = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(Number(value));
+                                }
+                                return { label, value: displayValue };
+                            }
+                            return null;
+                        })
+                        .filter(Boolean);
+                    
+                    itemDetails.forEach(detail => {
+                        if (yPos > pageHeight - 20) { // Check for page break
+                            doc.addPage();
+                            pageNumber++;
+                            yPos = pageMargin;
+                            addHeaderFooter();
+                        }
+                        doc.text(`${detail!.label}:`, pageMargin + 5, yPos);
+                        doc.text(`${detail!.value}`, pageMargin + 55, yPos);
+                        yPos += 5;
+                    });
+                    
+                    yPos += 5; // Add extra space between items
+                    doc.setLineDashPattern([1, 1], 0);
+                    doc.line(pageMargin, yPos, contentWidth + pageMargin, yPos);
+                    doc.setLineDashPattern([], 0);
+                    yPos += 7;
+
+
+                    if (yPos > pageHeight - 20 && index < dataToExport.length - 1) {
+                        doc.addPage();
+                        pageNumber++;
+                        yPos = pageMargin;
+                        addHeaderFooter();
                     }
                 });
+
+                // Update total page count on all pages
+                for (let i = 1; i <= pageNumber; i++) {
+                    doc.setPage(i);
+                    doc.setFontSize(8);
+                    doc.text(`Halaman ${i} dari ${pageNumber}`, pageMargin, pageHeight - 10);
+                }
+
 
                 doc.save(`${fileName}.pdf`);
             }
@@ -278,7 +332,7 @@ export default function LaporanPage() {
         <Card>
             <CardHeader>
                 <CardTitle className="font-headline">Pengaturan Laporan</CardTitle>
-                <CardDescription>Pilih kriteria untuk laporan yang ingin Anda buat. Ditemukan {inventoryData.length} data barang.</CardDescription>
+                <CardDescription>Pilih kriteria untuk laporan yang ingin Anda buat. Ditemukan {getFilteredData().length} data barang yang cocok.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
@@ -315,7 +369,7 @@ export default function LaporanPage() {
                      <p className="text-xs text-muted-foreground">
                         Pilih rentang tanggal untuk memfilter laporan berdasarkan tanggal pengadaan. Hanya efektif untuk jenis "Laporan Pengadaan".
                     </p>
-                    <DatePickerWithRange onDateChange={setDateRange} />
+                    <DatePickerWithRange onDateChange={setDateRange} disabled={reportType !== 'procurement'} />
                 </div>
                  <Button className="w-full md:w-auto" onClick={handleDownload} disabled={isDownloading}>
                     <Download className="mr-2 h-4 w-4" />
@@ -326,3 +380,5 @@ export default function LaporanPage() {
     </div>
   );
 }
+
+    
