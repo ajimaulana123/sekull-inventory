@@ -11,10 +11,43 @@ import type { InventoryItem } from '@/types';
 import { listenToInventoryData } from '@/lib/inventoryService';
 import type { DateRange } from 'react-day-picker';
 import { useToast } from '@/hooks/use-toast';
-
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 type ReportType = 'all' | 'active' | 'disposed' | 'procurement';
 type FileFormat = 'csv' | 'xlsx' | 'pdf';
+
+// Mapping untuk header kolom ke Bahasa Indonesia
+const headerMapping: { [key in keyof Required<InventoryItem>]: string } = {
+    noData: "No. Data",
+    itemType: "Jenis Barang",
+    mainItemNumber: "Induk No. Barang",
+    mainItemLetter: "Induk Huruf Barang",
+    subItemType: "Sub Jenis Barang",
+    brand: "Merk/Tipe",
+    subItemTypeCode: "Sub Kode Jenis",
+    subItemOrder: "Urut Sub Barang",
+    fundingSource: "Sumber Dana",
+    fundingItemOrder: "Urut Barang Dana",
+    area: "Area/Ruang",
+    subArea: "Sub-Area/Ruang",
+    procurementDate: "Tgl Pengadaan",
+    procurementMonth: "Bln Pengadaan",
+    procurementYear: "Thn Pengadaan",
+    supplier: "Supplier",
+    estimatedPrice: "Harga (Rp)",
+    procurementStatus: "Status Pengadaan",
+    disposalStatus: "Status Barang",
+    disposalDate: "Tgl Hapus",
+    disposalMonth: "Bln Hapus",
+    disposalYear: "Thn Hapus",
+    itemVerificationCode: "Kode Verifikasi Barang",
+    fundingVerificationCode: "Kode Verifikasi Dana",
+    totalRekapCode: "Kode Rekap Total",
+    disposalRekapCode: "Kode Rekap Hapus",
+    combinedFundingRekapCode: "Kode Rekap Dana"
+};
+
 
 export default function LaporanPage() {
     const { user } = useAuth();
@@ -50,14 +83,7 @@ export default function LaporanPage() {
             filteredData = filteredData.filter(item => item.disposalStatus === 'dihapus');
         }
 
-        if (dateRange?.from && dateRange?.to) {
-             if (reportType !== 'procurement') {
-                toast({
-                    variant: 'destructive',
-                    title: 'Peringatan',
-                    description: 'Rentang tanggal hanya berlaku untuk jenis laporan "Laporan Pengadaan".',
-                });
-            }
+        if (reportType === 'procurement' && dateRange?.from && dateRange?.to) {
             filteredData = filteredData.filter(item => {
                 try {
                     const itemDate = new Date(item.procurementYear, item.procurementMonth - 1, item.procurementDate);
@@ -69,11 +95,48 @@ export default function LaporanPage() {
         }
         return filteredData;
     }
+    
+    const getReportTitle = () => {
+        switch(reportType) {
+            case 'all': return 'Laporan Seluruh Inventaris';
+            case 'active': return 'Laporan Barang Aktif';
+            case 'disposed': return 'Laporan Barang Dihapus';
+            case 'procurement': return 'Laporan Pengadaan Barang';
+            default: return 'Laporan Inventaris';
+        }
+    }
+    
+    const transformDataForExport = (data: InventoryItem[]) => {
+        // Tentukan header yang akan diekspor (semua kecuali yang opsional & kosong)
+        const headers = (Object.keys(headerMapping) as (keyof InventoryItem)[]).filter(key => {
+            if (reportType !== 'disposed' && key.startsWith('disposal')) {
+                if (key !== 'disposalStatus') return false;
+            }
+            // Optional: Exclude certain complex codes if not needed
+            // if (key.toLowerCase().includes('code')) return false;
+            return true;
+        });
+
+        const translatedHeaders = headers.map(key => headerMapping[key]);
+        const body = data.map(item => {
+            return headers.map(header => {
+                const value = item[header];
+                 if (header === 'estimatedPrice') {
+                    return new Intl.NumberFormat('id-ID').format(Number(value) || 0);
+                }
+                return value ?? ''; // Berikan string kosong jika nilainya null atau undefined
+            });
+        });
+
+        return { translatedHeaders, body };
+    };
+
 
     const handleDownload = async () => {
         setIsDownloading(true);
         const dataToExport = getFilteredData();
-        const fileName = `laporan_inventaris_${reportType}_${new Date().toISOString().split('T')[0]}`;
+        const reportTitle = getReportTitle();
+        const fileName = `${reportTitle.toLowerCase().replace(/ /g, '_')}_${new Date().toISOString().split('T')[0]}`;
         
         if (dataToExport.length === 0) {
             toast({
@@ -85,37 +148,73 @@ export default function LaporanPage() {
             return;
         }
 
+        const { translatedHeaders, body: mappedBody } = transformDataForExport(dataToExport);
+
         try {
-            if (fileFormat === 'csv') {
-                const headers = Object.keys(dataToExport[0]) as (keyof InventoryItem)[];
-                const csvContent = [
-                    headers.join(','),
-                    ...dataToExport.map(item =>
-                        headers.map(header => `"${String(item[header] ?? '').replace(/"/g, '""')}"`).join(',')
-                    )
-                ].join('\n');
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                triggerBrowserDownload(blob, `${fileName}.csv`);
-            } else if (fileFormat === 'xlsx') {
-                const XLSX = await import('xlsx');
-                const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-                const workbook = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventaris');
-                XLSX.writeFile(workbook, `${fileName}.xlsx`);
+            if (fileFormat === 'csv' || fileFormat === 'xlsx') {
+                 const dataWithIndonesianHeaders = dataToExport.map(item => {
+                    let newObj: Record<string, any> = {};
+                    (Object.keys(item) as (keyof InventoryItem)[]).forEach(key => {
+                        const newKey = headerMapping[key] || key;
+                        newObj[newKey] = item[key];
+                    });
+                    return newObj;
+                });
+
+                if (fileFormat === 'csv') {
+                    const XLSX = await import('xlsx');
+                    const worksheet = XLSX.utils.json_to_sheet(dataWithIndonesianHeaders);
+                    const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
+                    const blob = new Blob([csvOutput], { type: 'text/csv;charset=utf-8;' });
+                    triggerBrowserDownload(blob, `${fileName}.csv`);
+                } else { // xlsx
+                    const XLSX = await import('xlsx');
+                    const worksheet = XLSX.utils.json_to_sheet(dataWithIndonesianHeaders);
+                    const workbook = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventaris');
+                    XLSX.writeFile(workbook, `${fileName}.xlsx`);
+                }
             } else if (fileFormat === 'pdf') {
                 const { default: jsPDF } = await import('jspdf');
                 const { default: autoTable } = await import('jspdf-autotable');
-                const doc = new jsPDF();
+                const doc = new jsPDF({ orientation: 'landscape' });
                 
-                const tableHeaders = Object.keys(dataToExport[0]);
-                const tableBody = dataToExport.map(item => Object.values(item).map(val => String(val ?? '')));
+                const reportDate = format(new Date(), "d MMMM yyyy", { locale: id });
+                let subTitle = `Per Tanggal: ${reportDate}`;
+                if (reportType === 'procurement' && dateRange?.from && dateRange?.to) {
+                     subTitle = `Periode: ${format(dateRange.from, "d MMM yyyy", { locale: id })} - ${format(dateRange.to, "d MMM yyyy", { locale: id })}`;
+                }
 
                 autoTable(doc, {
-                    head: [tableHeaders],
-                    body: tableBody,
+                    head: [translatedHeaders],
+                    body: mappedBody,
+                    startY: 28,
+                    theme: 'grid',
+                    headStyles: { fillColor: [52, 124, 51], textColor: 255 },
+                    styles: { fontSize: 8 },
                     didDrawPage: (data) => {
-                         doc.setFontSize(18);
-                         doc.text('Laporan Inventaris', data.settings.margin.left, 15);
+                         // Header
+                         doc.setFontSize(16);
+                         doc.setFont('helvetica', 'bold');
+                         doc.text(reportTitle, data.settings.margin.left, 15);
+                         doc.setFontSize(10);
+                         doc.setFont('helvetica', 'normal');
+                         doc.text(subTitle, data.settings.margin.left, 22);
+
+                         // Footer
+                         const pageCount = doc.getNumberOfPages();
+                         doc.setFontSize(8);
+                         doc.text(
+                            `Halaman ${data.pageNumber} dari ${pageCount}`,
+                            data.settings.margin.left,
+                            doc.internal.pageSize.height - 10
+                         );
+                         doc.text(
+                            `Dicetak pada: ${reportDate}`,
+                            doc.internal.pageSize.width - data.settings.margin.right,
+                            doc.internal.pageSize.height - 10,
+                            { align: 'right' }
+                         );
                     }
                 });
 
@@ -123,7 +222,7 @@ export default function LaporanPage() {
             }
              toast({
                 title: 'Unduhan Dimulai',
-                description: `File ${fileName}.${fileFormat} sedang diunduh.`,
+                description: `File ${fileName}.${fileFormat} sedang dibuat.`,
             });
         } catch (error) {
              console.error("Download error:", error);
