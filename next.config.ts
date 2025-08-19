@@ -18,6 +18,17 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config, { isServer }) => {
+    // This is to avoid a problem with jspdf trying to load node-only modules in the browser
+    if (!isServer) {
+        config.resolve.fallback = {
+            ...config.resolve.fallback,
+            fs: false,
+            path: false,
+        };
+    }
+    return config;
+  },
   async headers() {
     return [
       {

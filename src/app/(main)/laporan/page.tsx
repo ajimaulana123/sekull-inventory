@@ -10,6 +10,8 @@ import { useEffect, useState } from 'react';
 import type { InventoryItem } from '@/types';
 import { listenToInventoryData } from '@/lib/inventoryService';
 import type { DateRange } from 'react-day-picker';
+import { useToast } from '@/hooks/use-toast';
+
 
 type ReportType = 'all' | 'active' | 'disposed' | 'procurement';
 type FileFormat = 'csv' | 'xlsx' | 'pdf';
@@ -17,8 +19,10 @@ type FileFormat = 'csv' | 'xlsx' | 'pdf';
 export default function LaporanPage() {
     const { user } = useAuth();
     const router = useRouter();
+    const { toast } = useToast();
     const [inventoryData, setInventoryData] = useState<InventoryItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isDownloading, setIsDownloading] = useState(false);
 
     const [reportType, setReportType] = useState<ReportType>('all');
     const [fileFormat, setFileFormat] = useState<FileFormat>('csv');
@@ -37,53 +41,112 @@ export default function LaporanPage() {
         }
     }, [user, router]);
     
-    const handleDownload = () => {
+    const getFilteredData = () => {
         let filteredData = [...inventoryData];
 
-        // 1. Filter by report type
         if (reportType === 'active') {
             filteredData = filteredData.filter(item => item.disposalStatus === 'aktif');
         } else if (reportType === 'disposed') {
             filteredData = filteredData.filter(item => item.disposalStatus === 'dihapus');
         }
 
-        // 2. Filter by date range (only if 'procurement' report type is selected or date range is set)
         if (dateRange?.from && dateRange?.to) {
+             if (reportType !== 'procurement') {
+                toast({
+                    variant: 'destructive',
+                    title: 'Peringatan',
+                    description: 'Rentang tanggal hanya berlaku untuk jenis laporan "Laporan Pengadaan".',
+                });
+            }
             filteredData = filteredData.filter(item => {
                 try {
-                    // Create a date from procurement year, month, and day. Month is 0-indexed.
                     const itemDate = new Date(item.procurementYear, item.procurementMonth - 1, item.procurementDate);
                     return itemDate >= dateRange.from! && itemDate <= dateRange.to!;
                 } catch (e) {
-                    return false; // Invalid date in data
+                    return false;
                 }
             });
         }
+        return filteredData;
+    }
+
+    const handleDownload = async () => {
+        setIsDownloading(true);
+        const dataToExport = getFilteredData();
+        const fileName = `laporan_inventaris_${reportType}_${new Date().toISOString().split('T')[0]}`;
         
-        // 3. Generate file content (CSV for now)
-        if (fileFormat === 'csv') {
-            const headers = Object.keys(inventoryData[0] || {}) as (keyof InventoryItem)[];
-            const csvContent = [
-                headers.join(','),
-                ...filteredData.map(item =>
-                    headers.map(header => `"${String(item[header] ?? '').replace(/"/g, '""')}"`).join(',')
-                )
-            ].join('\n');
-            
-            // 4. Trigger download
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', `laporan_inventaris_${reportType}_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        } else {
-            alert(`Format ${fileFormat.toUpperCase()} belum didukung.`);
+        if (dataToExport.length === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Tidak Ada Data',
+                description: 'Tidak ada data yang ditemukan untuk kriteria laporan yang Anda pilih.',
+            });
+            setIsDownloading(false);
+            return;
+        }
+
+        try {
+            if (fileFormat === 'csv') {
+                const headers = Object.keys(dataToExport[0]) as (keyof InventoryItem)[];
+                const csvContent = [
+                    headers.join(','),
+                    ...dataToExport.map(item =>
+                        headers.map(header => `"${String(item[header] ?? '').replace(/"/g, '""')}"`).join(',')
+                    )
+                ].join('\n');
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                triggerBrowserDownload(blob, `${fileName}.csv`);
+            } else if (fileFormat === 'xlsx') {
+                const XLSX = await import('xlsx');
+                const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventaris');
+                XLSX.writeFile(workbook, `${fileName}.xlsx`);
+            } else if (fileFormat === 'pdf') {
+                const { default: jsPDF } = await import('jspdf');
+                const { default: autoTable } = await import('jspdf-autotable');
+                const doc = new jsPDF();
+                
+                const tableHeaders = Object.keys(dataToExport[0]);
+                const tableBody = dataToExport.map(item => Object.values(item).map(val => String(val ?? '')));
+
+                autoTable(doc, {
+                    head: [tableHeaders],
+                    body: tableBody,
+                    didDrawPage: (data) => {
+                         doc.setFontSize(18);
+                         doc.text('Laporan Inventaris', data.settings.margin.left, 15);
+                    }
+                });
+
+                doc.save(`${fileName}.pdf`);
+            }
+             toast({
+                title: 'Unduhan Dimulai',
+                description: `File ${fileName}.${fileFormat} sedang diunduh.`,
+            });
+        } catch (error) {
+             console.error("Download error:", error);
+             toast({
+                variant: "destructive",
+                title: "Gagal Mengunduh",
+                description: "Terjadi kesalahan saat membuat file laporan.",
+             });
+        } finally {
+            setIsDownloading(false);
         }
     };
-
+    
+    const triggerBrowserDownload = (blob: Blob, fileName: string) => {
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
 
     if (!user || user.role !== 'admin') {
         return (
@@ -142,19 +205,22 @@ export default function LaporanPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="csv">CSV (.csv)</SelectItem>
-                                <SelectItem value="xlsx" disabled>Excel (.xlsx) - Segera Hadir</SelectItem>
-                                <SelectItem value="pdf" disabled>PDF (.pdf) - Segera Hadir</SelectItem>
+                                <SelectItem value="xlsx">Excel (.xlsx)</SelectItem>
+                                <SelectItem value="pdf">PDF (.pdf)</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
                 </div>
                 <div className="space-y-2">
                     <label className="text-sm font-medium">Rentang Tanggal Pengadaan</label>
+                     <p className="text-xs text-muted-foreground">
+                        Pilih rentang tanggal untuk memfilter laporan berdasarkan tanggal pengadaan. Hanya efektif untuk jenis "Laporan Pengadaan".
+                    </p>
                     <DatePickerWithRange onDateChange={setDateRange} />
                 </div>
-                 <Button className="w-full md:w-auto" onClick={handleDownload}>
+                 <Button className="w-full md:w-auto" onClick={handleDownload} disabled={isDownloading}>
                     <Download className="mr-2 h-4 w-4" />
-                    Unduh Laporan
+                    {isDownloading ? 'Membuat Laporan...' : 'Unduh Laporan'}
                 </Button>
             </CardContent>
         </Card>
