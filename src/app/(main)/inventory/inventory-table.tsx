@@ -122,12 +122,17 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
             
             const importedItems: InventoryItem[] = [];
             let failedCount = 0;
+            const errorLogs: string[] = [];
 
-            for (const row of json) {
+
+            for (const [index, row] of json.entries()) {
                 const mappedRow: { [key: string]: any } = {};
                 for (const key in row) {
-                    if (reverseHeaderMapping[key]) {
-                        mappedRow[reverseHeaderMapping[key]] = row[key as keyof typeof row];
+                    const mappedKey = reverseHeaderMapping[key];
+                    if (mappedKey) {
+                        const value = row[key as keyof typeof row];
+                        // Trim strings to remove leading/trailing whitespace
+                        mappedRow[mappedKey] = typeof value === 'string' ? value.trim() : value;
                     }
                 }
                 
@@ -146,7 +151,11 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
                     importedItems.push(fullItem);
                 } else {
                     failedCount++;
-                    console.warn("Invalid row:", parsed.error.format());
+                    const formattedErrors = Object.entries(parsed.error.flatten().fieldErrors)
+                        .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
+                        .join('; ');
+                    errorLogs.push(`Baris ${index + 2}: Gagal validasi - ${formattedErrors}`);
+                    console.warn(`Invalid row at Excel index ${index + 2}:`, parsed.error.format());
                 }
             }
             
@@ -158,6 +167,16 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
                 title: "Impor Selesai",
                 description: `${importedItems.length} data berhasil diimpor. ${failedCount} data gagal/dilewati.`,
             });
+
+            if (errorLogs.length > 0) {
+              console.error("Detail Kegagalan Impor:\n" + errorLogs.join('\n'));
+               toast({
+                variant: 'destructive',
+                title: 'Beberapa Data Gagal Impor',
+                description: 'Silakan periksa konsol browser (F12) untuk melihat detail error.',
+                duration: 10000,
+              });
+            }
             
         } catch (error) {
             console.error("Failed to import file:", error);
