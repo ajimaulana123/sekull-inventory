@@ -144,7 +144,7 @@ export const columns: ColumnDef<InventoryItem>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
         >
-          Tgl Pengadaan
+          Tahun Pengadaan
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
@@ -152,7 +152,7 @@ export const columns: ColumnDef<InventoryItem>[] = [
     cell: ({ row }) => {
         const date = row.getValue('procurementDate') as Date;
         if (!date) return '-';
-        return <div className="text-center">{format(date, 'dd-MM-yyyy')}</div>;
+        return <div className="text-center">{format(date, 'yyyy')}</div>;
     },
     sortingFn: 'datetime'
   },
