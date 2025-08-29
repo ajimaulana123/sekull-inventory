@@ -114,7 +114,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
             const workbook = XLSX.read(data, { type: 'array' });
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
-            const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+            const json = XLSX.utils.sheet_to_json(worksheet, { defval: "", cellDates: true });
 
             const reverseHeaderMapping = Object.fromEntries(
                 Object.entries(headerMapping).map(([key, value]) => [value, key])
@@ -421,3 +421,5 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
     </div>
   );
 }
+
+    
