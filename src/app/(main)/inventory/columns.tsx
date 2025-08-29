@@ -155,7 +155,7 @@ export const columns: ColumnDef<InventoryItem>[] = [
     header: 'Status',
     cell: ({ row }) => {
       const status = row.getValue('disposalStatus') as string;
-      return <Badge variant={status === 'aktif' ? 'default' : 'destructive'} className="capitalize bg-primary/20 text-primary-foreground hover:bg-primary/30">{status}</Badge>;
+      return <Badge variant={status === 'aktif' ? 'default' : 'destructive'} className="capitalize">{status}</Badge>;
     }
   },
   {
