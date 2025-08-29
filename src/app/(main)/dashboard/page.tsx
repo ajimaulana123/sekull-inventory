@@ -41,7 +41,8 @@ export default function Dashboard() {
   const totalValue = inventoryData.reduce((sum, item) => sum + item.estimatedPrice, 0);
 
   const dataByYear = inventoryData.reduce((acc, item) => {
-    const year = item.procurementYear;
+    if (!item.procurementDate) return acc;
+    const year = new Date(item.procurementDate).getFullYear();
     if (!acc[year]) {
       acc[year] = { year, total: 0 };
     }

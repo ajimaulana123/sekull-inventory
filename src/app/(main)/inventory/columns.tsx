@@ -8,6 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
   const item = row.original;
@@ -136,19 +137,24 @@ export const columns: ColumnDef<InventoryItem>[] = [
     cell: ({ row }) => <div>{row.getValue('area')}</div>,
   },
   {
-    accessorKey: 'procurementYear',
+    accessorKey: 'procurementDate',
     header: ({ column }) => {
       return (
         <Button
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
         >
-          Tahun Pengadaan
+          Tgl Pengadaan
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
     },
-    cell: ({ row }) => <div className="text-center">{row.getValue('procurementYear')}</div>,
+    cell: ({ row }) => {
+        const date = row.getValue('procurementDate') as Date;
+        if (!date) return '-';
+        return <div className="text-center">{format(date, 'dd-MM-yyyy')}</div>;
+    },
+    sortingFn: 'datetime'
   },
   {
     accessorKey: 'disposalStatus',

@@ -2,6 +2,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { InventoryItem } from "@/types";
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 interface InventoryDetailProps {
     item: InventoryItem;
@@ -57,7 +59,7 @@ export function InventoryDetail({ item }: InventoryDetailProps) {
                     <CardTitle className="text-lg">Detail Pengadaan</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <DetailRow label="Tanggal Pengadaan" value={`${item.procurementDate}/${item.procurementMonth}/${item.procurementYear}`} />
+                    <DetailRow label="Tanggal Pengadaan" value={item.procurementDate ? format(new Date(item.procurementDate), 'PPP', { locale: id }) : '-'} />
                     <DetailRow label="Status Pengadaan" value={item.procurementStatus} />
                     <DetailRow label="Supplier" value={item.supplier} />
                     <DetailRow label="Perkiraan Harga" value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.estimatedPrice)} />
@@ -71,7 +73,7 @@ export function InventoryDetail({ item }: InventoryDetailProps) {
                 <CardContent>
                     <DetailRow label="Status Barang" value={item.disposalStatus} />
                     {item.disposalStatus === 'dihapus' && (
-                         <DetailRow label="Tanggal Penghapusan" value={`${item.disposalDate}/${item.disposalMonth}/${item.disposalYear}`} />
+                         <DetailRow label="Tanggal Penghapusan" value={item.disposalDate ? format(new Date(item.disposalDate), 'PPP', { locale: id }) : '-'} />
                     )}
                      <Separator className="my-4" />
                     <DetailRow label="Kode Verifikasi Barang" value={item.itemVerificationCode} />

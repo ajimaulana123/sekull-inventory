@@ -28,18 +28,14 @@ export const inventoryItemSchema = z.object({
   subArea: z.coerce.string().min(1, "Sub-Area/Ruang tidak boleh kosong"),
 
   // Pengadaan
-  procurementDate: z.coerce.number().min(1).max(31),
-  procurementMonth: z.coerce.number().min(1).max(12),
-  procurementYear: z.coerce.number().min(1900).max(new Date().getFullYear() + 5),
+  procurementDate: z.date({ required_error: "Tanggal Pengadaan harus diisi." }),
   supplier: z.coerce.string().min(1, "Supplier/Distributor tidak boleh kosong"),
   estimatedPrice: z.coerce.number().min(0, "Harga harus positif"),
   procurementStatus: z.enum(['baru', 'second', 'bekas']),
   
   // Penghapusan
   disposalStatus: z.enum(['aktif', 'dihapus']),
-  disposalDate: z.coerce.number().optional(),
-  disposalMonth: z.coerce.number().optional(),
-  disposalYear: z.coerce.number().optional(),
+  disposalDate: z.date().optional(),
 
   // Kode Verifikasi & Rekapitulasi (dibuat otomatis)
   itemVerificationCode: z.string().optional(),
@@ -47,7 +43,26 @@ export const inventoryItemSchema = z.object({
   totalRekapCode: z.string().optional(),
   disposalRekapCode: z.string().optional(),
   combinedFundingRekapCode: z.string().optional(),
+}).refine(data => {
+    if (data.disposalStatus === 'dihapus') {
+        return !!data.disposalDate;
+    }
+    return true;
+}, {
+    message: "Tanggal penghapusan harus diisi jika statusnya 'dihapus'.",
+    path: ["disposalDate"],
 });
 
 
 export type InventoryItem = z.infer<typeof inventoryItemSchema>;
+
+// Exclude auto-generated fields for form validation
+export const inventoryFormSchema = inventoryItemSchema.omit({
+    itemVerificationCode: true,
+    fundingVerificationCode: true,
+    totalRekapCode: true,
+    disposalRekapCode: true,
+    combinedFundingRekapCode: true,
+});
+
+export type InventoryFormValues = z.infer<typeof inventoryFormSchema>;

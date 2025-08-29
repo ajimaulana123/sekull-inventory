@@ -1,5 +1,5 @@
 'use client';
-import { getFirestore, collection, onSnapshot, Unsubscribe, doc, setDoc, query, writeBatch, deleteDoc } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, Unsubscribe, doc, setDoc, query, writeBatch, deleteDoc, Timestamp } from 'firebase/firestore';
 import { getFirebaseApp } from './firebase';
 import type { InventoryItem } from '@/types';
 
@@ -7,11 +7,27 @@ const INVENTORY_COLLECTION = 'inventory';
 
 const db = getFirestore(getFirebaseApp());
 
+// Helper to convert Firestore Timestamps to JS Dates
+const convertTimestamps = (data: Record<string, any>): Record<string, any> => {
+    const newData = { ...data };
+    for (const key in newData) {
+        if (newData[key] instanceof Timestamp) {
+            newData[key] = newData[key].toDate();
+        }
+    }
+    return newData;
+};
+
+
 export function listenToInventoryData(onDataChange: (data: InventoryItem[]) => void): Unsubscribe {
   const inventoryQuery = query(collection(db, INVENTORY_COLLECTION));
   
   const unsubscribe = onSnapshot(inventoryQuery, (snapshot) => {
-    const data = snapshot.docs.map(doc => ({ ...doc.data() } as InventoryItem));
+    const data = snapshot.docs.map(doc => {
+        const docData = doc.data();
+        const convertedData = convertTimestamps(docData);
+        return { ...convertedData } as InventoryItem
+    });
     onDataChange(data);
   }, (error) => {
     console.error("Error listening to inventory data:", error);

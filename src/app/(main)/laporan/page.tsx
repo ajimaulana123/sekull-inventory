@@ -18,7 +18,7 @@ type ReportType = 'all' | 'active' | 'disposed' | 'procurement';
 type FileFormat = 'csv' | 'xlsx' | 'pdf';
 
 // Mapping untuk header kolom ke Bahasa Indonesia
-export const headerMapping: { [key in keyof Required<InventoryItem>]?: string } = {
+export const headerMapping: { [key in keyof Partial<InventoryItem>]?: string } = {
     noData: "No. Data",
     itemType: "Jenis Barang",
     mainItemNumber: "Induk No. Barang",
@@ -31,16 +31,12 @@ export const headerMapping: { [key in keyof Required<InventoryItem>]?: string } 
     fundingItemOrder: "Urut Barang Dana",
     area: "Area/Ruang",
     subArea: "Sub-Area/Ruang",
-    procurementDate: "Tgl Pengadaan",
-    procurementMonth: "Bln Pengadaan",
-    procurementYear: "Thn Pengadaan",
+    procurementDate: "Tanggal Pengadaan",
     supplier: "Supplier",
     estimatedPrice: "Harga (Rp)",
     procurementStatus: "Status Pengadaan",
     disposalStatus: "Status Barang",
-    disposalDate: "Tgl Hapus",
-    disposalMonth: "Bln Hapus",
-    disposalYear: "Thn Hapus",
+    disposalDate: "Tanggal Hapus",
     itemVerificationCode: "Kode Verifikasi Barang",
     fundingVerificationCode: "Kode Verifikasi Dana",
     totalRekapCode: "Kode Rekap Total",
@@ -85,8 +81,9 @@ export default function LaporanPage() {
 
         if (reportType === 'procurement' && dateRange?.from && dateRange?.to) {
             filteredData = filteredData.filter(item => {
+                if (!item.procurementDate) return false;
                 try {
-                    const itemDate = new Date(item.procurementYear, item.procurementMonth - 1, item.procurementDate);
+                    const itemDate = new Date(item.procurementDate);
                     return itemDate >= dateRange.from! && itemDate <= dateRange.to!;
                 } catch (e) {
                     return false;
@@ -107,18 +104,18 @@ export default function LaporanPage() {
     }
     
     const transformDataForExport = (data: InventoryItem[]) => {
-        const headers = (Object.keys(headerMapping) as (keyof InventoryItem)[]).filter(key => {
-            if (reportType !== 'disposed' && key.startsWith('disposal')) {
-                if (key !== 'disposalStatus') return false;
-            }
-            return true;
-        });
         
         const dataWithIndonesianHeaders = data.map(item => {
             let newObj: Record<string, any> = {};
-            (Object.keys(item) as (keyof InventoryItem)[]).forEach(key => {
-                const newKey = headerMapping[key as keyof typeof headerMapping] || key;
-                newObj[newKey] = item[key as keyof InventoryItem];
+            (Object.keys(headerMapping) as (keyof InventoryItem)[]).forEach(key => {
+                 const newKey = headerMapping[key as keyof typeof headerMapping] || key;
+                 const value = item[key as keyof InventoryItem];
+
+                 if (value instanceof Date) {
+                     newObj[newKey] = format(value, 'yyyy-MM-dd');
+                 } else if (value !== undefined && value !== null) {
+                     newObj[newKey] = value;
+                 }
             });
             return newObj;
         });
@@ -144,10 +141,11 @@ export default function LaporanPage() {
             return;
         }
 
-        const { dataWithIndonesianHeaders } = transformDataForExport(dataToExport);
+        
 
         try {
             if (fileFormat === 'csv' || fileFormat === 'xlsx') {
+                const { dataWithIndonesianHeaders } = transformDataForExport(dataToExport);
                 const XLSX = await import('xlsx');
                 const worksheet = XLSX.utils.json_to_sheet(dataWithIndonesianHeaders);
                 
@@ -167,7 +165,7 @@ export default function LaporanPage() {
                 const reportDate = format(new Date(), "d MMMM yyyy", { locale: id });
                 let subTitle = `Per Tanggal: ${reportDate}`;
                 if (reportType === 'procurement' && dateRange?.from && dateRange?.to) {
-                     subTitle = `Periode: ${format(dateRange.from, "d MMM yyyy", { locale: id })} - ${format(dateRange.to, "d MMM yyyy", { locale: id })}`;
+                     subTitle = `Periode: ${format(dateRange.from, "d MMMM yyyy", { locale: id })} - ${format(dateRange.to, "d MMMM yyyy", { locale: id })}`;
                 }
 
                 const pageMargin = 15;
@@ -217,9 +215,13 @@ export default function LaporanPage() {
                         .map(([key, value]) => {
                             const label = headerMapping[key as keyof typeof headerMapping];
                             if (label && value !== undefined && value !== null && value !== '') {
-                                let displayValue = value;
-                                if (key === 'estimatedPrice') {
+                                let displayValue: string | number;
+                                if (value instanceof Date) {
+                                    displayValue = format(value, 'PPP', { locale: id });
+                                } else if (key === 'estimatedPrice') {
                                     displayValue = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(Number(value));
+                                } else {
+                                    displayValue = value as string | number;
                                 }
                                 return { label, value: displayValue };
                             }
@@ -233,8 +235,9 @@ export default function LaporanPage() {
                            addHeaderFooter();
                         }
                         doc.text(`${detail!.label}:`, pageMargin + 5, yPos);
-                        doc.text(`${detail!.value}`, pageMargin + 55, yPos);
-                        yPos += 5;
+                        doc.text(`${detail!.value}`, pageMargin + 55, yPos, { maxWidth: contentWidth - 55 });
+                        const textDimensions = doc.getTextDimensions(`${detail!.value}`, { maxWidth: contentWidth - 55, fontSize: 9 });
+                        yPos += textDimensions.h + 2; // Adjust spacing based on text height
                     });
                     
                     yPos += 5; 
@@ -290,7 +293,7 @@ export default function LaporanPage() {
         return (
              <div className="flex flex-col gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold font-headline tracking-tight">Laporan Inventaris</h1>
+                    <h1 className="text-3dcl font-bold font-headline tracking-tight">Laporan Inventaris</h1>
                     <p className="text-muted-foreground">Buat dan unduh laporan data inventaris sekolah.</p>
                 </div>
                 <div className="flex-1 flex items-center justify-center">
