@@ -18,6 +18,27 @@ interface InventoryFormProps {
   initialData?: InventoryItem | null;
 }
 
+const defaultFormValues: InventoryFormValues = {
+  noData: '',
+  itemType: '',
+  mainItemNumber: '',
+  mainItemLetter: '',
+  subItemType: '',
+  brand: '',
+  subItemTypeCode: '',
+  subItemOrder: '',
+  fundingSource: '',
+  fundingItemOrder: '',
+  area: '',
+  subArea: '',
+  procurementDate: new Date(),
+  supplier: '',
+  estimatedPrice: 0,
+  procurementStatus: 'baru',
+  disposalStatus: 'aktif',
+  disposalDate: null
+};
+
 export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -27,29 +48,9 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
     resolver: zodResolver(inventoryFormSchema),
     defaultValues: initialData ? {
         ...initialData,
-        // Ensure dates are Date objects
         procurementDate: initialData.procurementDate ? new Date(initialData.procurementDate) : new Date(),
         disposalDate: initialData.disposalDate ? new Date(initialData.disposalDate) : null,
-    } : {
-      noData: '',
-      itemType: '',
-      mainItemNumber: '',
-      mainItemLetter: '',
-      subItemType: '',
-      brand: '',
-      subItemTypeCode: '',
-      subItemOrder: '',
-      fundingSource: '',
-      fundingItemOrder: '',
-      area: '',
-      subArea: '',
-      procurementDate: new Date(),
-      supplier: '',
-      estimatedPrice: 0,
-      procurementStatus: 'baru',
-      disposalStatus: 'aktif',
-      disposalDate: null
-    },
+    } : defaultFormValues,
   });
 
   useEffect(() => {
@@ -59,6 +60,8 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
         procurementDate: initialData.procurementDate ? new Date(initialData.procurementDate) : new Date(),
         disposalDate: initialData.disposalDate ? new Date(initialData.disposalDate) : null,
       });
+    } else {
+      form.reset(defaultFormValues);
     }
   }, [initialData, form]);
 
@@ -136,7 +139,7 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                  <FormField control={form.control} name="procurementDate" render={({ field }) => ( <FormItem><FormLabel>Tanggal Pengadaan</FormLabel><FormControl><DatePicker value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
                  <FormField control={form.control} name="supplier" render={({ field }) => ( <FormItem><FormLabel>Supplier/Distributor</FormLabel><FormControl><Input placeholder="-" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                 <FormField control={form.control} name="estimatedPrice" render={({ field }) => ( <FormItem><FormLabel>Perkiraan Harga (Rp)</FormLabel><FormControl><Input type="number" placeholder="500000" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} /></FormControl><FormMessage /></FormItem> )} />
+                 <FormField control={form.control} name="estimatedPrice" render={({ field }) => ( <FormItem><FormLabel>Perkiraan Harga (Rp)</FormLabel><FormControl><Input type="number" placeholder="500000" {...field} onChange={e => field.onChange(e.target.valueAsNumber || 0)} /></FormControl><FormMessage /></FormItem> )} />
                  <FormField control={form.control} name="procurementStatus" render={({ field }) => ( <FormItem><FormLabel>Status Pengadaan</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="baru">Baru</SelectItem><SelectItem value="second">Second</SelectItem><SelectItem value="bekas">Bekas</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
             </div>
         </div>
