@@ -8,6 +8,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table';
+import * as XLSX from 'xlsx';
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { InventoryItem } from '@/types';
@@ -17,15 +18,18 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { columns as columnDefs } from './columns';
-import { PlusCircle, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { PlusCircle, SlidersHorizontal, Trash2, Upload } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { InventoryForm } from './inventory-form';
 import { InventoryDetail } from './inventory-detail';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { deleteInventoryItems } from '@/lib/inventoryService';
+import { deleteInventoryItems, saveInventoryItemsBatch } from '@/lib/inventoryService';
 import { useToast } from '@/hooks/use-toast';
+import { inventoryItemSchema } from '@/types';
+import { headerMapping } from '../laporan/page';
+
 
 interface InventoryTableProps {
   data: InventoryItem[];
@@ -47,6 +51,8 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = React.useState(false);
   const [itemsToDelete, setItemsToDelete] = React.useState<string[]>([]);
   const [isDeleting, setIsDeleting] = React.useState(false);
+  const [isImporting, setIsImporting] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
 
   const handleViewDetails = (item: InventoryItem) => {
@@ -91,6 +97,84 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
           setIsConfirmDeleteDialogOpen(false);
       }
   };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target?.result as ArrayBuffer);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+
+            const reverseHeaderMapping = Object.fromEntries(
+                Object.entries(headerMapping).map(([key, value]) => [value, key])
+            );
+            
+            const importedItems: InventoryItem[] = [];
+            let failedCount = 0;
+
+            for (const row of json) {
+                const mappedRow: { [key: string]: any } = {};
+                for (const key in row) {
+                    if (reverseHeaderMapping[key]) {
+                        mappedRow[reverseHeaderMapping[key]] = row[key as keyof typeof row];
+                    }
+                }
+                
+                const parsed = inventoryItemSchema.safeParse(mappedRow);
+                
+                if (parsed.success) {
+                    const values = parsed.data;
+                    const fullItem: InventoryItem = {
+                        ...values,
+                        itemVerificationCode: `${values.mainItemLetter}.${values.subItemTypeCode}.${values.subItemOrder}`,
+                        fundingVerificationCode: `${values.fundingSource}.${values.fundingItemOrder}.${values.mainItemLetter}${values.subItemTypeCode}`,
+                        totalRekapCode: `${values.mainItemLetter}${values.subItemTypeCode}`,
+                        combinedFundingRekapCode: `${values.mainItemLetter}${values.subItemTypeCode}${values.fundingSource}`,
+                        disposalRekapCode: values.disposalStatus === 'dihapus' ? `${values.mainItemLetter}${values.subItemTypeCode}-HAPUS` : undefined,
+                    };
+                    importedItems.push(fullItem);
+                } else {
+                    failedCount++;
+                    console.warn("Invalid row:", parsed.error.format());
+                }
+            }
+            
+            if (importedItems.length > 0) {
+              await saveInventoryItemsBatch(importedItems);
+            }
+
+            toast({
+                title: "Impor Selesai",
+                description: `${importedItems.length} data berhasil diimpor. ${failedCount} data gagal/dilewati.`,
+            });
+            
+        } catch (error) {
+            console.error("Failed to import file:", error);
+            toast({
+                variant: 'destructive',
+                title: 'Gagal Impor',
+                description: 'Terjadi kesalahan saat memproses file Excel.',
+            });
+        } finally {
+            setIsImporting(false);
+            // Reset file input
+            if(fileInputRef.current) fileInputRef.current.value = "";
+        }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
 
   const columns = React.useMemo<ColumnDef<InventoryItem>[]>(
     () => columnDefs.filter(c => user?.role === 'admin' || c.id !== 'select'),
@@ -185,19 +269,32 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
           </DropdownMenuContent>
         </DropdownMenu>
         {user?.role === 'admin' && (
-           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={handleAddNewItem}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Tambah Data
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{selectedItem ? 'Ubah Data Inventaris' : 'Tambah Data Inventaris Baru'}</DialogTitle>
-              </DialogHeader>
-              <InventoryForm onSuccess={handleFormSuccess} initialData={selectedItem} />
-            </DialogContent>
-          </Dialog>
+          <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileImport}
+              className="hidden"
+              accept=".xlsx, .xls, .csv"
+            />
+            <Button onClick={handleImportClick} variant="outline" disabled={isImporting}>
+                <Upload className="mr-2 h-4 w-4" />
+                {isImporting ? 'Mengimpor...' : 'Impor Data'}
+            </Button>
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={handleAddNewItem}>
+                  <PlusCircle className="mr-2 h-4 w-4" /> Tambah Data
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>{selectedItem ? 'Ubah Data Inventaris' : 'Tambah Data Inventaris Baru'}</DialogTitle>
+                </DialogHeader>
+                <InventoryForm onSuccess={handleFormSuccess} initialData={selectedItem} />
+              </DialogContent>
+            </Dialog>
+          </div>
         )}
       </div>
       <Card className="flex-1">

@@ -22,9 +22,6 @@ export function listenToInventoryData(onDataChange: (data: InventoryItem[]) => v
 }
 
 export async function saveInventoryItem(item: InventoryItem): Promise<void> {
-    // This function handles both adding and updating items.
-    // setDoc with merge:true will create a new doc if it doesn't exist,
-    // or update it if it does, based on the `item.noData` ID.
     const docRef = doc(db, INVENTORY_COLLECTION, item.noData);
     const cleanedItem = Object.fromEntries(
         Object.entries(item).filter(([_, v]) => v !== undefined && v !== null)
@@ -32,26 +29,32 @@ export async function saveInventoryItem(item: InventoryItem): Promise<void> {
     await setDoc(docRef, cleanedItem, { merge: true });
 }
 
-/**
- * Deletes one or more inventory items from Firestore.
- * @param noDataIds An array of document IDs ('noData' field) to delete.
- * @returns A promise that resolves when the items have been deleted.
- */
+
+export async function saveInventoryItemsBatch(items: InventoryItem[]): Promise<void> {
+    if (items.length === 0) return;
+    
+    const batch = writeBatch(db);
+    items.forEach(item => {
+        const docRef = doc(db, INVENTORY_COLLECTION, item.noData);
+         const cleanedItem = Object.fromEntries(
+            Object.entries(item).filter(([_, v]) => v !== undefined && v !== null)
+        );
+        batch.set(docRef, cleanedItem, { merge: true });
+    });
+    
+    await batch.commit();
+}
+
+
 export async function deleteInventoryItems(noDataIds: string[]): Promise<void> {
     if (noDataIds.length === 0) {
         return;
     }
 
-    if (noDataIds.length === 1) {
-        // Simple delete for a single item
-        await deleteDoc(doc(db, INVENTORY_COLLECTION, noDataIds[0]));
-    } else {
-        // Batched delete for multiple items
-        const batch = writeBatch(db);
-        noDataIds.forEach(id => {
-            const docRef = doc(db, INVENTORY_COLLECTION, id);
-            batch.delete(docRef);
-        });
-        await batch.commit();
-    }
+    const batch = writeBatch(db);
+    noDataIds.forEach(id => {
+        const docRef = doc(db, INVENTORY_COLLECTION, id);
+        batch.delete(docRef);
+    });
+    await batch.commit();
 }

@@ -18,7 +18,7 @@ type ReportType = 'all' | 'active' | 'disposed' | 'procurement';
 type FileFormat = 'csv' | 'xlsx' | 'pdf';
 
 // Mapping untuk header kolom ke Bahasa Indonesia
-const headerMapping: { [key in keyof Required<InventoryItem>]?: string } = {
+export const headerMapping: { [key in keyof Required<InventoryItem>]?: string } = {
     noData: "No. Data",
     itemType: "Jenis Barang",
     mainItemNumber: "Induk No. Barang",
@@ -113,18 +113,6 @@ export default function LaporanPage() {
             }
             return true;
         });
-
-        const translatedHeaders = headers.map(key => headerMapping[key as keyof typeof headerMapping] || key);
-
-        const body = data.map(item => {
-            return headers.map(header => {
-                const value = item[header as keyof InventoryItem];
-                 if (header === 'estimatedPrice') {
-                    return new Intl.NumberFormat('id-ID').format(Number(value) || 0);
-                }
-                return value ?? ''; 
-            });
-        });
         
         const dataWithIndonesianHeaders = data.map(item => {
             let newObj: Record<string, any> = {};
@@ -136,7 +124,7 @@ export default function LaporanPage() {
         });
 
 
-        return { translatedHeaders, body, dataWithIndonesianHeaders };
+        return { dataWithIndonesianHeaders };
     };
 
 
@@ -156,19 +144,18 @@ export default function LaporanPage() {
             return;
         }
 
-        const { translatedHeaders, body: mappedBody, dataWithIndonesianHeaders } = transformDataForExport(dataToExport);
+        const { dataWithIndonesianHeaders } = transformDataForExport(dataToExport);
 
         try {
             if (fileFormat === 'csv' || fileFormat === 'xlsx') {
+                const XLSX = await import('xlsx');
+                const worksheet = XLSX.utils.json_to_sheet(dataWithIndonesianHeaders);
+                
                 if (fileFormat === 'csv') {
-                    const XLSX = await import('xlsx');
-                    const worksheet = XLSX.utils.json_to_sheet(dataWithIndonesianHeaders);
                     const csvOutput = XLSX.utils.sheet_to_csv(worksheet);
                     const blob = new Blob(["\uFEFF" + csvOutput], { type: 'text/csv;charset=utf-8;' });
                     triggerBrowserDownload(blob, `${fileName}.csv`);
                 } else { // xlsx
-                    const XLSX = await import('xlsx');
-                    const worksheet = XLSX.utils.json_to_sheet(dataWithIndonesianHeaders);
                     const workbook = XLSX.utils.book_new();
                     XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventaris');
                     XLSX.writeFile(workbook, `${fileName}.xlsx`);
@@ -191,6 +178,9 @@ export default function LaporanPage() {
                 let pageNumber = 1;
 
                 const addHeaderFooter = () => {
+                    if (pageNumber > 1) doc.addPage();
+                    yPos = pageMargin;
+
                     // Header
                     doc.setFont('helvetica', 'bold');
                     doc.setFontSize(16);
@@ -207,8 +197,8 @@ export default function LaporanPage() {
                     // Footer
                     const footerY = pageHeight - 10;
                     doc.setFontSize(8);
-                    doc.text(`Halaman ${pageNumber} dari ${doc.getNumberOfPages()}`, pageMargin, footerY);
-                    doc.text(`Dicetak pada: ${reportDate}`, pageWidth - pageMargin, footerY, { align: 'right' });
+                    doc.text(`Halaman ${pageNumber}`, pageWidth - pageMargin, footerY, { align: 'right' });
+                    doc.text(`Dicetak pada: ${reportDate}`, pageMargin, footerY, { align: 'left' });
                 };
 
                 addHeaderFooter();
@@ -238,40 +228,27 @@ export default function LaporanPage() {
                         .filter(Boolean);
                     
                     itemDetails.forEach(detail => {
-                        if (yPos > pageHeight - 20) { // Check for page break
-                            doc.addPage();
-                            pageNumber++;
-                            yPos = pageMargin;
-                            addHeaderFooter();
+                        if (yPos > pageHeight - 20) {
+                           pageNumber++;
+                           addHeaderFooter();
                         }
                         doc.text(`${detail!.label}:`, pageMargin + 5, yPos);
                         doc.text(`${detail!.value}`, pageMargin + 55, yPos);
                         yPos += 5;
                     });
                     
-                    yPos += 5; // Add extra space between items
+                    yPos += 5; 
                     doc.setLineDashPattern([1, 1], 0);
                     doc.line(pageMargin, yPos, contentWidth + pageMargin, yPos);
                     doc.setLineDashPattern([], 0);
                     yPos += 7;
 
-
                     if (yPos > pageHeight - 20 && index < dataToExport.length - 1) {
-                        doc.addPage();
                         pageNumber++;
-                        yPos = pageMargin;
                         addHeaderFooter();
                     }
                 });
-
-                // Update total page count on all pages
-                for (let i = 1; i <= pageNumber; i++) {
-                    doc.setPage(i);
-                    doc.setFontSize(8);
-                    doc.text(`Halaman ${i} dari ${pageNumber}`, pageMargin, pageHeight - 10);
-                }
-
-
+                
                 doc.save(`${fileName}.pdf`);
             }
              toast({
@@ -380,5 +357,3 @@ export default function LaporanPage() {
     </div>
   );
 }
-
-    
