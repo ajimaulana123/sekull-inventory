@@ -8,7 +8,7 @@ export type User = {
   role: 'admin' | 'user';
 };
 
-export const inventoryItemSchema = z.object({
+const baseInventorySchema = z.object({
   // Data Utama
   noData: z.coerce.string().min(1, "Nomor Data tidak boleh kosong"),
   itemType: z.coerce.string().min(1, "Jenis Barang tidak boleh kosong"),
@@ -35,7 +35,7 @@ export const inventoryItemSchema = z.object({
   
   // Penghapusan
   disposalStatus: z.enum(['aktif', 'dihapus']),
-  disposalDate: z.date().optional(),
+  disposalDate: z.date().optional().nullable(),
 
   // Kode Verifikasi & Rekapitulasi (dibuat otomatis)
   itemVerificationCode: z.string().optional(),
@@ -43,7 +43,9 @@ export const inventoryItemSchema = z.object({
   totalRekapCode: z.string().optional(),
   disposalRekapCode: z.string().optional(),
   combinedFundingRekapCode: z.string().optional(),
-}).refine(data => {
+});
+
+export const inventoryItemSchema = baseInventorySchema.refine(data => {
     if (data.disposalStatus === 'dihapus') {
         return !!data.disposalDate;
     }
@@ -57,12 +59,21 @@ export const inventoryItemSchema = z.object({
 export type InventoryItem = z.infer<typeof inventoryItemSchema>;
 
 // Exclude auto-generated fields for form validation
-export const inventoryFormSchema = inventoryItemSchema.omit({
+export const inventoryFormSchema = baseInventorySchema.omit({
     itemVerificationCode: true,
     fundingVerificationCode: true,
     totalRekapCode: true,
     disposalRekapCode: true,
     combinedFundingRekapCode: true,
+}).refine(data => {
+    if (data.disposalStatus === 'dihapus') {
+        return !!data.disposalDate;
+    }
+    return true;
+}, {
+    message: "Tanggal penghapusan harus diisi jika statusnya 'dihapus'.",
+    path: ["disposalDate"],
 });
+
 
 export type InventoryFormValues = z.infer<typeof inventoryFormSchema>;

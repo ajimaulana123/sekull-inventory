@@ -29,7 +29,7 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
         ...initialData,
         // Ensure dates are Date objects
         procurementDate: initialData.procurementDate ? new Date(initialData.procurementDate) : new Date(),
-        disposalDate: initialData.disposalDate ? new Date(initialData.disposalDate) : undefined,
+        disposalDate: initialData.disposalDate ? new Date(initialData.disposalDate) : null,
     } : {
       noData: '',
       itemType: '',
@@ -48,7 +48,7 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
       estimatedPrice: 0,
       procurementStatus: 'baru',
       disposalStatus: 'aktif',
-      disposalDate: undefined
+      disposalDate: null
     },
   });
 
@@ -57,7 +57,7 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
       form.reset({
         ...initialData,
         procurementDate: initialData.procurementDate ? new Date(initialData.procurementDate) : new Date(),
-        disposalDate: initialData.disposalDate ? new Date(initialData.disposalDate) : undefined,
+        disposalDate: initialData.disposalDate ? new Date(initialData.disposalDate) : null,
       });
     }
   }, [initialData, form]);
@@ -136,7 +136,7 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                  <FormField control={form.control} name="procurementDate" render={({ field }) => ( <FormItem><FormLabel>Tanggal Pengadaan</FormLabel><FormControl><DatePicker value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
                  <FormField control={form.control} name="supplier" render={({ field }) => ( <FormItem><FormLabel>Supplier/Distributor</FormLabel><FormControl><Input placeholder="-" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                 <FormField control={form.control} name="estimatedPrice" render={({ field }) => ( <FormItem><FormLabel>Perkiraan Harga (Rp)</FormLabel><FormControl><Input type="number" placeholder="500000" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                 <FormField control={form.control} name="estimatedPrice" render={({ field }) => ( <FormItem><FormLabel>Perkiraan Harga (Rp)</FormLabel><FormControl><Input type="number" placeholder="500000" {...field} onChange={e => field.onChange(e.target.valueAsNumber)} /></FormControl><FormMessage /></FormItem> )} />
                  <FormField control={form.control} name="procurementStatus" render={({ field }) => ( <FormItem><FormLabel>Status Pengadaan</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="baru">Baru</SelectItem><SelectItem value="second">Second</SelectItem><SelectItem value="bekas">Bekas</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
             </div>
         </div>
@@ -150,7 +150,7 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
                 <FormField control={form.control} name="disposalStatus" render={({ field }) => ( <FormItem><FormLabel>Status Barang</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="aktif">Aktif</SelectItem><SelectItem value="dihapus">Dihapus</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
                 {disposalStatus === 'dihapus' && (
                     <>
-                        <FormField control={form.control} name="disposalDate" render={({ field }) => ( <FormItem><FormLabel>Tanggal Penghapusan</FormLabel><FormControl><DatePicker value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="disposalDate" render={({ field }) => ( <FormItem><FormLabel>Tanggal Penghapusan</FormLabel><FormControl><DatePicker value={field.value ?? undefined} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
                     </>
                 )}
             </div>
