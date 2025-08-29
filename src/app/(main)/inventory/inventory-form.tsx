@@ -46,15 +46,11 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
   
   const form = useForm<InventoryFormValues>({
     resolver: zodResolver(inventoryFormSchema),
-    defaultValues: initialData ? {
-        ...initialData,
-        procurementDate: initialData.procurementDate ? new Date(initialData.procurementDate) : new Date(),
-        disposalDate: initialData.disposalDate ? new Date(initialData.disposalDate) : null,
-    } : defaultFormValues,
+    defaultValues: initialData || defaultFormValues,
   });
 
   useEffect(() => {
-    if (initialData) {
+     if (initialData) {
       form.reset({
         ...initialData,
         procurementDate: initialData.procurementDate ? new Date(initialData.procurementDate) : new Date(),
@@ -139,7 +135,7 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                  <FormField control={form.control} name="procurementDate" render={({ field }) => ( <FormItem><FormLabel>Tanggal Pengadaan</FormLabel><FormControl><DatePicker value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
                  <FormField control={form.control} name="supplier" render={({ field }) => ( <FormItem><FormLabel>Supplier/Distributor</FormLabel><FormControl><Input placeholder="-" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                 <FormField control={form.control} name="estimatedPrice" render={({ field }) => ( <FormItem><FormLabel>Perkiraan Harga (Rp)</FormLabel><FormControl><Input type="number" placeholder="500000" {...field} onChange={e => field.onChange(e.target.valueAsNumber || 0)} /></FormControl><FormMessage /></FormItem> )} />
+                 <FormField control={form.control} name="estimatedPrice" render={({ field }) => ( <FormItem><FormLabel>Perkiraan Harga (Rp)</FormLabel><FormControl><Input type="number" placeholder="500000" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl><FormMessage /></FormItem> )} />
                  <FormField control={form.control} name="procurementStatus" render={({ field }) => ( <FormItem><FormLabel>Status Pengadaan</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="baru">Baru</SelectItem><SelectItem value="second">Second</SelectItem><SelectItem value="bekas">Bekas</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
             </div>
         </div>
