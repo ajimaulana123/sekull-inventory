@@ -110,28 +110,18 @@ export const columns: ColumnDef<InventoryItem>[] = [
   },
   {
     accessorKey: 'jenisBarang',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="px-4 py-2"
-        >
+    header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
           Jenis Barang
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
-      );
-    },
+    ),
     cell: ({ row }) => <div className="capitalize px-4 py-2">{row.getValue('jenisBarang')}</div>,
   },
   {
     accessorKey: 'merkTipe',
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="px-4 py-2"
-      >
+      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
         Merk/Tipe
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
@@ -141,82 +131,62 @@ export const columns: ColumnDef<InventoryItem>[] = [
    {
     accessorKey: 'jumlah',
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="px-4 py-2"
-      >
+      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
         Jumlah
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('jumlah')}</div>,
+    cell: ({ row }) => <div className="text-center px-4 py-2">{row.getValue('jumlah')}</div>,
   },
   {
     accessorKey: 'satuan',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="px-4 py-2"
-      >
-        Satuan
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
+    header: 'Satuan',
     cell: ({ row }) => <div className="px-4 py-2">{row.getValue('satuan')}</div>,
   },
   {
     accessorKey: 'tanggalPengadaan',
-    header: ({ column }) => {
-      return (
-        <Button
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-          className="px-4 py-2"
-        >
+    header: ({ column }) => (
+        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
           Tahun Pengadaan
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
-      );
-    },
+    ),
     cell: ({ row }) => {
-        const date = row.getValue('tanggalPengadaan') as Date;
-        if (!date) return '-';
-        return <div className="px-4 py-2">{format(date, 'yyyy')}</div>;
+        const dateValue = row.getValue('tanggalPengadaan');
+        if (!dateValue) return <div className="px-4 py-2">-</div>;
+        try {
+            const date = new Date(dateValue as string | number | Date);
+            if (isNaN(date.getTime())) return <div className="px-4 py-2">-</div>;
+            return <div className="px-4 py-2">{format(date, 'yyyy')}</div>;
+        } catch (e) {
+            return <div className="px-4 py-2">-</div>;
+        }
     },
     sortingFn: 'datetime'
   },
   {
     accessorKey: 'harga',
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="px-4 py-2"
-      >
+      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
         Harga (Rp)
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue('harga'))
-      if (isNaN(amount)) return '-';
+      if (isNaN(amount)) return <div className="px-4 py-2">-</div>;
       const formatted = new Intl.NumberFormat('id-ID', {
         style: 'currency',
         currency: 'IDR',
+        minimumFractionDigits: 0
       }).format(amount)
-      return <div className="px-4 py-2">{formatted}</div>
+      return <div className="font-medium px-4 py-2">{formatted}</div>
     },
   },
   {
     accessorKey: 'areaRuang',
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="px-4 py-2"
-      >
+      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
         Area/Ruang
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
@@ -226,11 +196,7 @@ export const columns: ColumnDef<InventoryItem>[] = [
    {
     accessorKey: 'kondisi',
     header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="px-4 py-2"
-      >
+      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
         Kondisi
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
@@ -241,13 +207,8 @@ export const columns: ColumnDef<InventoryItem>[] = [
         if (kondisi === 'Baik') badgeVariant = 'default';
         if (kondisi === 'Rusak Berat') badgeVariant = 'destructive';
         
-        return <div className="px-4 py-2"><Badge variant={badgeVariant} className="capitalize">{kondisi}</Badge></div>;
+        return <div className="px-4 py-2"><Badge variant={badgeVariant} className="capitalize">{kondisi || '-'}</Badge></div>;
     }
-  },
-  {
-    accessorKey: 'keterangan',
-    header: 'Keterangan',
-    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('keterangan')}</div>,
   },
   {
     id: 'actions',

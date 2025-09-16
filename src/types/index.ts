@@ -1,7 +1,6 @@
 'use client';
 import { z } from "zod";
 
-// This is the main schema for the inventory item, used for data from Firestore and for the data table
 export const inventoryItemSchema = z.object({
   noData: z.string().optional(),
   jenisBarang: z.string().optional().default('-'),
@@ -21,24 +20,20 @@ export const inventoryItemSchema = z.object({
   statusPengadaan: z.string().optional().default('-'),
   statusBarang: z.string().optional().default('aktif'),
   tanggalHapus: z.date().optional().nullable(),
-  kodeVerifikasiBarang: z.string().optional(),
-  kodeVerifikasiDana: z.string().optional(),
-  kodeRekapTotal: z.string().optional(),
-  kodeRekapHapus: z.string().optional(),
-  kodeRekapDana: z.string().optional(),
-  // Kolom tambahan yang mungkin tidak ada di gambar utama tapi dibutuhkan di form/tabel
+  kodeVerifikasiBarang: z.string().optional().default('-'),
+  kodeVerifikasiDana: z.string().optional().default('-'),
+  kodeRekapTotal: z.string().optional().default('-'),
+  kodeRekapHapus: z.string().optional().default('-'),
+  kodeRekapDana: z.string().optional().default('-'),
   jumlah: z.coerce.number().optional().default(1),
   satuan: z.string().optional().default('buah'),
   kondisi: z.string().optional().default('Baik'),
   keterangan: z.string().optional().default('-'),
-  // Kolom lama untuk kompatibilitas sementara, akan dihapus nanti
-  estimatedPrice: z.coerce.number().optional().default(0),
 });
-
 
 export type InventoryItem = z.infer<typeof inventoryItemSchema>;
 
-export const headerMapping: Record<keyof Partial<InventoryItem>, string> = {
+export const headerMapping: Record<string, string> = {
     noData: 'No. Data',
     jenisBarang: "Jenis Barang",
     indukNoBarang: "Induk No. Barang",
@@ -68,7 +63,7 @@ export const headerMapping: Record<keyof Partial<InventoryItem>, string> = {
     keterangan: 'Keterangan',
 };
 
-// Urutan ini HARUS sama persis dengan urutan kolom di file Excel
+// Urutan ini HARUS sama persis dengan urutan kolom di file Excel, *setelah* kolom 'No.'.
 export const headerOrder: (keyof InventoryItem)[] = [
     'jenisBarang',
     'indukNoBarang',
@@ -92,23 +87,27 @@ export const headerOrder: (keyof InventoryItem)[] = [
     'kodeRekapTotal',
     'kodeRekapHapus',
     'kodeRekapDana',
+    // Kolom tambahan yang tidak ada di gambar asli tapi dibutuhkan
+    'jumlah',
+    'satuan',
+    'kondisi',
+    'keterangan'
 ];
 
-
-// This is a stricter schema specifically for the form validation
 export const inventoryFormSchema = z.object({
   jenisBarang: z.string().min(1, "Jenis Barang tidak boleh kosong"),
-  merkTipe: z.string().optional(),
   jumlah: z.coerce.number().min(1, "Jumlah harus lebih dari 0."),
   satuan: z.string().min(1, "Satuan harus diisi."),
   kondisi: z.enum(['Baik', 'Rusak Ringan', 'Rusak Berat'], { message: "Pilih kondisi barang." }),
   harga: z.coerce.number().min(0, "Harga tidak boleh negatif.").default(0),
-  areaRuang: z.string().min(1, "Area/Ruang tidak boleh kosong"),
+  statusBarang: z.enum(['aktif', 'dihapus'], { message: "Pilih status barang." }),
+  tanggalHapus: z.date().nullable().optional(),
+  
+  // Opsional
+  merkTipe: z.string().optional(),
+  areaRuang: z.string().optional(),
   tanggalPengadaan: z.date().optional().nullable(),
   statusPengadaan: z.string().optional(),
-  statusBarang: z.enum(['aktif', 'dihapus'], { message: "Pilih status barang." }),
-  tanggalHapus: z.date().nullable(),
-  // Add optional fields that might be part of the form but not strictly required for every submission
   keterangan: z.string().optional(),
   indukNoBarang: z.string().optional(),
   indukHurufBarang: z.string().optional(),
@@ -128,6 +127,5 @@ export const inventoryFormSchema = z.object({
     message: "Tanggal penghapusan harus diisi jika statusnya 'dihapus'.",
     path: ["tanggalHapus"],
 });
-
 
 export type InventoryFormValues = z.infer<typeof inventoryFormSchema>;
