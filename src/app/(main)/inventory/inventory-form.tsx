@@ -20,24 +20,30 @@ interface InventoryFormProps {
 
 const defaultFormValues: InventoryFormValues = {
   noData: '',
-  itemType: '',
-  mainItemNumber: '',
-  mainItemLetter: '',
-  subItemType: '',
-  brand: '',
-  subItemTypeCode: '',
-  subItemOrder: '',
-  fundingSource: '',
-  fundingItemOrder: '',
-  area: '',
-  subArea: '',
-  procurementDate: new Date(),
-  supplier: '',
+  itemType: '-',
+  mainItemNumber: '-',
+  mainItemLetter: '-',
+  subItemType: '-',
+  brand: '-',
+  subItemTypeCode: '-',
+  subItemOrder: '-',
+  fundingSource: '-',
+  fundingItemOrder: '-',
+  area: '-',
+  subArea: '-',
+  procurementDate: null,
+  supplier: '-',
   estimatedPrice: 0,
-  procurementStatus: 'baru',
+  procurementStatus: '-',
   disposalStatus: 'aktif',
   disposalDate: null
 };
+
+// Function to generate a unique ID
+const generateUniqueId = () => {
+    return `INV-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+};
+
 
 export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
   const { toast } = useToast();
@@ -54,7 +60,7 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
      if (initialData) {
       form.reset({
         ...initialData,
-        procurementDate: initialData.procurementDate ? new Date(initialData.procurementDate) : new Date(),
+        procurementDate: initialData.procurementDate ? new Date(initialData.procurementDate) : null,
         disposalDate: initialData.disposalDate ? new Date(initialData.disposalDate) : null,
       });
       // Set initial formatted price for editing
@@ -89,17 +95,17 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
   async function onSubmit(values: InventoryFormValues) {
     setIsLoading(true);
     try {
-      const fullItem: InventoryItem = {
-          ...values,
-          // Generate verification and rekap codes
-          itemVerificationCode: `${values.mainItemLetter}.${values.subItemTypeCode}.${values.subItemOrder}`,
-          fundingVerificationCode: `${values.fundingSource}.${values.fundingItemOrder}.${values.mainItemLetter}${values.subItemTypeCode}`,
-          totalRekapCode: `${values.mainItemLetter}${values.subItemTypeCode}`,
-          combinedFundingRekapCode: `${values.mainItemLetter}${values.subItemTypeCode}${values.fundingSource}`,
-          disposalRekapCode: values.disposalStatus === 'dihapus' ? `${values.mainItemLetter}${values.subItemTypeCode}-HAPUS` : undefined,
-      };
+        const itemToSave: InventoryItem = {
+            ...values,
+            noData: isEditing ? values.noData! : generateUniqueId(),
+            itemVerificationCode: `${values.mainItemLetter}.${values.subItemTypeCode}.${values.subItemOrder}`,
+            fundingVerificationCode: `${values.fundingSource}.${values.fundingItemOrder}.${values.mainItemLetter}${values.subItemTypeCode}`,
+            totalRekapCode: `${values.mainItemLetter}${values.subItemTypeCode}`,
+            combinedFundingRekapCode: `${values.mainItemLetter}${values.subItemTypeCode}${values.fundingSource}`,
+            disposalRekapCode: values.disposalStatus === 'dihapus' ? `${values.mainItemLetter}${values.subItemTypeCode}-HAPUS` : undefined,
+        };
       
-      await saveInventoryItem(fullItem);
+      await saveInventoryItem(itemToSave);
       
       toast({
         title: 'Sukses!',
@@ -128,7 +134,6 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
         <div>
             <h3 className="text-lg font-medium mb-4">Data Utama Barang</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField control={form.control} name="noData" render={({ field }) => ( <FormItem><FormLabel>Nomor Data</FormLabel><FormControl><Input placeholder="1" {...field} disabled={isEditing} /></FormControl><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="itemType" render={({ field }) => ( <FormItem><FormLabel>Jenis Barang</FormLabel><FormControl><Input placeholder="MEJA" {...field} /></FormControl><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="mainItemNumber" render={({ field }) => ( <FormItem><FormLabel>Induk No. Barang</FormLabel><FormControl><Input placeholder="1" {...field} /></FormControl><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="mainItemLetter" render={({ field }) => ( <FormItem><FormLabel>Induk Huruf Barang</FormLabel><FormControl><Input placeholder="A" {...field} /></FormControl><FormMessage /></FormItem> )} />
@@ -158,10 +163,10 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
         <div>
             <h3 className="text-lg font-medium mb-4">Detail Pengadaan</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                 <FormField control={form.control} name="procurementDate" render={({ field }) => ( <FormItem><FormLabel>Tanggal Pengadaan</FormLabel><FormControl><DatePicker value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
+                 <FormField control={form.control} name="procurementDate" render={({ field }) => ( <FormItem><FormLabel>Tanggal Pengadaan</FormLabel><FormControl><DatePicker value={field.value ?? undefined} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
                  <FormField control={form.control} name="supplier" render={({ field }) => ( <FormItem><FormLabel>Supplier/Distributor</FormLabel><FormControl><Input placeholder="-" {...field} /></FormControl><FormMessage /></FormItem> )} />
                  <FormField control={form.control} name="estimatedPrice" render={({ field }) => ( <FormItem><FormLabel>Perkiraan Harga (Rp)</FormLabel><FormControl><Input placeholder="500.000" value={displayPrice} onChange={handlePriceChange} /></FormControl><FormMessage /></FormItem> )} />
-                 <FormField control={form.control} name="procurementStatus" render={({ field }) => ( <FormItem><FormLabel>Status Pengadaan</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="baru">Baru</SelectItem><SelectItem value="second">Second</SelectItem><SelectItem value="bekas">Bekas</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                 <FormField control={form.control} name="procurementStatus" render={({ field }) => ( <FormItem><FormLabel>Status Pengadaan</FormLabel><FormControl><Input placeholder="Baru" {...field} /></FormControl><FormMessage /></FormItem> )} />
             </div>
         </div>
         

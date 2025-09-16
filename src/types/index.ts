@@ -8,36 +8,63 @@ export type User = {
   role: 'admin' | 'user';
 };
 
-const baseInventorySchema = z.object({
-  // Data Utama
-  noData: z.coerce.string().min(1, "Nomor Data tidak boleh kosong"),
-  itemType: z.coerce.string().min(1, "Jenis Barang tidak boleh kosong"),
-  mainItemNumber: z.coerce.string().min(1, "Nomor Induk Barang tidak boleh kosong"),
-  mainItemLetter: z.coerce.string().min(1, "Huruf Induk Barang tidak boleh kosong"),
-  subItemType: z.coerce.string().min(1, "Sub Jenis Barang tidak boleh kosong"),
-  brand: z.coerce.string().min(1, "Merk/Tipe tidak boleh kosong"),
-  subItemTypeCode: z.coerce.string().min(1, "Kode Sub Jenis Barang tidak boleh kosong"),
-  subItemOrder: z.coerce.string().min(1, "Nomor Urut Sub Barang tidak boleh kosong"),
+export const headerMapping: { [key: string]: string } = {
+    noData: 'No. Data',
+    itemType: 'Jenis Barang',
+    mainItemNumber: 'Induk No. Barang',
+    mainItemLetter: 'Induk Huruf Barang',
+    subItemType: 'Sub Jenis Barang',
+    brand: 'Merk/Tipe',
+    modelType: 'Model/Tipe',
+    description: 'Keterangan',
+    quantity: 'Jumlah',
+    unit: 'Satuan',
+    condition: 'Kondisi',
+    price: 'Harga (Rp)',
+    subItemTypeCode: 'Sub Kode Jenis',
+    subItemOrder: 'Urut Sub Barang',
+    fundingSource: 'Sumber Dana',
+    fundingItemOrder: 'Urut Barang Dana',
+    area: 'Area/Ruang',
+    subArea: 'Sub-Area/Ruang',
+    procurementDate: 'Tanggal Pengadaan',
+    supplier: 'Supplier',
+    procurementStatus: 'Status Pengadaan',
+    disposalStatus: 'Status Barang',
+    disposalDate: 'Tanggal Hapus',
+    itemVerificationCode: 'Kode Verifikasi Barang',
+    fundingVerificationCode: 'Kode Verifikasi Dana',
+    totalRekapCode: 'Kode Rekap Total',
+    disposalRekapCode: 'Kode Rekap Hapus',
+    combinedFundingRekapCode: 'Kode Rekap Dana'
+};
 
-  // Pendanaan
-  fundingSource: z.coerce.string().min(1, "Sumber Pendanaan tidak boleh kosong"),
-  fundingItemOrder: z.coerce.string().min(1, "Nomor Urut Barang Pendanaan tidak boleh kosong"),
-  
-  // Lokasi
-  area: z.coerce.string().min(1, "Area/Ruang tidak boleh kosong"),
-  subArea: z.coerce.string().min(1, "Sub-Area/Ruang tidak boleh kosong"),
+export const headerOrder = Object.keys(headerMapping);
 
-  // Pengadaan
-  procurementDate: z.date({ required_error: "Tanggal Pengadaan harus diisi." }),
-  supplier: z.coerce.string().min(1, "Supplier/Distributor tidak boleh kosong"),
-  estimatedPrice: z.coerce.number().min(0, "Harga harus positif"),
-  procurementStatus: z.enum(['baru', 'second', 'bekas']),
-  
-  // Penghapusan
-  disposalStatus: z.enum(['aktif', 'dihapus']),
-  disposalDate: z.date().optional().nullable(),
-
-  // Kode Verifikasi & Rekapitulasi (dibuat otomatis)
+export const inventoryItemSchema = z.object({
+  noData: z.string().optional(), // No longer strictly min(1) for import flexibility
+  itemType: z.string().optional().or(z.literal('')), 
+  mainItemNumber: z.string().optional().or(z.literal('')), 
+  mainItemLetter: z.string().optional().or(z.literal('')), 
+  subItemType: z.string().optional().or(z.literal('')), 
+  brand: z.string().optional().or(z.literal('')), 
+  modelType: z.string().optional().or(z.literal('')), 
+  description: z.string().optional().or(z.literal('')), 
+  quantity: z.coerce.number().optional().default(0), // Coerce to number, default to 0
+  unit: z.string().optional().or(z.literal('')), 
+  condition: z.string().optional().or(z.literal('')), // Allow any string for flexibility
+  price: z.coerce.number().optional().default(0), // Coerce to number, default to 0
+  subItemTypeCode: z.string().optional().or(z.literal('')), 
+  subItemOrder: z.string().optional().or(z.literal('')), 
+  fundingSource: z.string().optional().or(z.literal('')), 
+  fundingItemOrder: z.string().optional().or(z.literal('')), 
+  area: z.string().optional().or(z.literal('')), 
+  subArea: z.string().optional().or(z.literal('')), 
+  procurementDate: z.date().optional().nullable(), // Keep date nullable and optional
+  supplier: z.string().optional().or(z.literal('')), 
+  procurementStatus: z.string().optional().or(z.literal('')), // Allow any string for flexibility
+  disposalStatus: z.string().optional().or(z.literal('')), // Allow any string for flexibility
+  disposalDate: z.date().optional().nullable(), // Keep date nullable and optional
   itemVerificationCode: z.string().optional(),
   fundingVerificationCode: z.string().optional(),
   totalRekapCode: z.string().optional(),
@@ -45,26 +72,22 @@ const baseInventorySchema = z.object({
   combinedFundingRekapCode: z.string().optional(),
 });
 
-export const inventoryItemSchema = baseInventorySchema.refine(data => {
-    if (data.disposalStatus === 'dihapus') {
-        return !!data.disposalDate;
-    }
-    return true;
-}, {
-    message: "Tanggal penghapusan harus diisi jika statusnya 'dihapus'.",
-    path: ["disposalDate"],
-});
-
-
 export type InventoryItem = z.infer<typeof inventoryItemSchema>;
 
-// Exclude auto-generated fields for form validation
-export const inventoryFormSchema = baseInventorySchema.omit({
-    itemVerificationCode: true,
-    fundingVerificationCode: true,
-    totalRekapCode: true,
-    disposalRekapCode: true,
-    combinedFundingRekapCode: true,
+// inventoryFormSchema should be stricter, extending from inventoryItemSchema and adding refinements
+export const inventoryFormSchema = inventoryItemSchema.extend({
+  noData: z.string().min(1, "Nomor Data tidak boleh kosong"),
+  itemType: z.string().min(1, "Jenis Barang tidak boleh kosong"),
+  brand: z.string().min(1, "Merk harus diisi."),
+  modelType: z.string().min(1, "Model/Tipe harus diisi."),
+  quantity: z.coerce.number().min(1, "Jumlah harus lebih dari 0."),
+  unit: z.string().min(1, "Satuan harus diisi."),
+  condition: z.enum(['Baik', 'Rusak Ringan', 'Rusak Berat'], { message: "Pilih kondisi barang." }),
+  price: z.coerce.number().min(0, "Harga tidak boleh negatif."),
+  area: z.string().min(1, "Area/Ruang tidak boleh kosong"),
+  procurementDate: z.date({ required_error: "Tanggal Pengadaan harus diisi." }).nullable().refine(date => date !== null, { message: "Tanggal Pengadaan harus diisi." }),
+  procurementStatus: z.enum(['baru', 'second', 'bekas'], { message: "Pilih status pengadaan." }),
+  disposalStatus: z.enum(['aktif', 'dihapus'], { message: "Pilih status barang." }),
 }).refine(data => {
     if (data.disposalStatus === 'dihapus') {
         return !!data.disposalDate;

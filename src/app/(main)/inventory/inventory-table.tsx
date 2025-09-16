@@ -23,18 +23,35 @@ import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { InventoryForm } from './inventory-form';
-import { InventoryDetail } from './inventory-detail';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { deleteInventoryItems, saveInventoryItemsBatch } from '@/lib/inventoryService';
 import { useToast } from '@/hooks/use-toast';
-import { inventoryItemSchema } from '@/types';
-import { headerMapping } from '../laporan/page';
+import { inventoryItemSchema, headerMapping, headerOrder } from '@/types';
 
 
 interface InventoryTableProps {
   data: InventoryItem[];
   refreshData: () => void;
 }
+
+const parseFlexibleDate = (value: any): Date | null => {
+    if (!value || value === '-') return null;
+    if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+
+    if (typeof value === 'number' && value > 0) { // Excel date serial number
+        const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+        const jsDate = new Date(excelEpoch.getTime() + value * 86400000);
+        return isNaN(jsDate.getTime()) ? null : jsDate;
+    }
+
+    if (typeof value === 'string') {
+        const date = new Date(value);
+        if (!isNaN(date.getTime())) return date;
+    }
+
+    return null;
+};
+
 
 export function InventoryTable({ data, refreshData }: InventoryTableProps) {
   const { user } = useAuth();
@@ -45,7 +62,6 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
   const [rowSelection, setRowSelection] = React.useState({});
   
   const [isFormOpen, setIsFormOpen] = React.useState(false);
-  const [isDetailOpen, setIsDetailOpen] = React.useState(false);
   const [selectedItem, setSelectedItem] = React.useState<InventoryItem | null>(null);
 
   const [isConfirmDeleteDialogOpen, setIsConfirmDeleteDialogOpen] = React.useState(false);
@@ -55,37 +71,35 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
 
-  const handleViewDetails = (item: InventoryItem) => {
-    setSelectedItem(item);
-    setIsDetailOpen(true);
-  };
-
   const handleEditItem = (item: InventoryItem) => {
     setSelectedItem(item);
     setIsFormOpen(true);
   };
   
   const handleAddNewItem = () => {
-    setSelectedItem(null); // Clear selected item for new entry
+    setSelectedItem(null);
     setIsFormOpen(true);
   };
 
   const handleDeleteRequest = (itemIds: string[]) => {
-      setItemsToDelete(itemIds);
+      if (!itemIds || itemIds.length === 0) return;
+      setItemsToDelete(itemIds.filter(id => id));
       setIsConfirmDeleteDialogOpen(true);
   };
   
   const confirmDelete = async () => {
       setIsDeleting(true);
       try {
-          await deleteInventoryItems(itemsToDelete);
-          toast({
-              title: "Sukses!",
-              description: `${itemsToDelete.length} data berhasil dihapus.`
-          });
-          table.resetRowSelection(); // Deselect all rows after deletion
+          if (itemsToDelete.length > 0) {
+              await deleteInventoryItems(itemsToDelete);
+              toast({
+                  title: "Sukses!",
+                  description: `${itemsToDelete.length} data berhasil dihapus.`
+              });
+              table.resetRowSelection();
+          }
       } catch (error) {
-          console.error("Failed to delete items:", error);
+          console.error("Gagal menghapus data:", error);
           toast({
               variant: "destructive",
               title: "Gagal!",
@@ -95,6 +109,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
           setIsDeleting(false);
           setItemsToDelete([]);
           setIsConfirmDeleteDialogOpen(false);
+          refreshData();
       }
   };
 
@@ -102,103 +117,139 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
     fileInputRef.current?.click();
   };
 
-  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const processAndSaveExcelData = async (fileData: ArrayBuffer) => {
+    let importedItemsCount = 0;
+    const errorLogs: string[] = [];
+    try {
+        const data = new Uint8Array(fileData);
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+        const sheetName = workbook.SheetNames[0];
+        if (!sheetName) throw new Error("File Excel tidak memiliki sheet yang valid.");
+
+        const worksheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null }) as (string | number | null)[][];
+        
+        const fileHeaders = json[0] as string[];
+        const fileDataRows = json.slice(1);
+
+        if (fileDataRows.length === 0) {
+            toast({ title: "File Kosong", description: "File Excel tidak berisi data." });
+            return;
+        }
+        
+        const itemsToSave: InventoryItem[] = [];
+
+        for (const [index, row] of fileDataRows.entries()) {
+            const rowIndex = index + 2;
+            let mappedRow: Partial<InventoryItem> = {};
+
+            headerOrder.forEach((key, colIndex) => {
+                const rawValue = row[colIndex];
+                let value: any = (rawValue === null || rawValue === undefined || String(rawValue).trim() === '') ? '-' : rawValue;
+                
+                if (key === 'estimatedPrice') {
+                    value = (value === '-') ? 0 : parseFloat(String(value).replace(/[^0-9.-]+/g, ''));
+                    if (isNaN(value)) value = 0;
+                } else if (key !== 'procurementDate' && key !== 'disposalDate') { // Handle all other fields as strings
+                    value = String(value);
+                }
+
+                mappedRow[key as keyof InventoryItem] = value;
+            });
+            
+            const noData = mappedRow.noData && mappedRow.noData !== '-' ? mappedRow.noData : `INV-${Date.now()}-${index}`;
+            mappedRow.noData = noData;
+
+            const sanitized = {
+                ...mappedRow,
+                procurementDate: parseFlexibleDate(mappedRow.procurementDate),
+                disposalDate: parseFlexibleDate(mappedRow.disposalDate),
+            }
+
+            const parsed = inventoryItemSchema.safeParse(sanitized);
+
+            if (parsed.success) {
+                const { data: values } = parsed;
+                itemsToSave.push({
+                    ...values,
+                    itemVerificationCode: `${values.mainItemLetter || ''}.${values.subItemTypeCode || ''}.${values.subItemOrder || ''}`.replace(/^\.+|\.+$/g, ''),
+                    fundingVerificationCode: `${values.fundingSource || ''}.${values.fundingItemOrder || ''}.${values.mainItemLetter || ''}${values.subItemTypeCode || ''}`.replace(/^\.+|\.+$/g, ''),
+                    totalRekapCode: `${values.mainItemLetter || ''}${values.subItemTypeCode || ''}`,
+                    combinedFundingRekapCode: `${values.mainItemLetter || ''}${values.subItemTypeCode || ''}${values.fundingSource || ''}`,
+                    disposalRekapCode: values.disposalStatus === 'dihapus' ? `${values.mainItemLetter || ''}${values.subItemTypeCode || ''}-HAPUS` : undefined,
+                });
+            } else {
+                const flatErrors = parsed.error.flatten();
+                const errorMessages = Object.entries(flatErrors.fieldErrors).map(([field, messages]) => `${field}: ${messages.join(', ')}`).join('; ');
+                errorLogs.push(`Baris ${rowIndex}: Gagal validasi - ${errorMessages}`);
+            }
+        }
+
+        if (itemsToSave.length > 0) {
+            await saveInventoryItemsBatch(itemsToSave);
+            importedItemsCount = itemsToSave.length;
+        }
+
+        if (errorLogs.length > 0) {
+              console.error("Detail Kegagalan Impor:\n" + errorLogs.join('\n'));
+               toast({
+                variant: 'destructive',
+                title: 'Beberapa Data Gagal Impor',
+                description: `Lihat konsol browser (F12) untuk detail ${errorLogs.length} kegagalan.`,
+                duration: 10000,
+            });
+        }
+        
+        toast({
+            title: "Impor Selesai",
+            description: `${importedItemsCount} dari ${fileDataRows.length} data berhasil diimpor.`,
+        });
+
+    } catch (error: any) {
+        console.error("Gagal memproses file:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Gagal Impor',
+            description: error.message || 'Terjadi kesalahan yang tidak diketahui.',
+        });
+    }
+  };
+
+  const handleFileImport = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
     setIsImporting(true);
     const reader = new FileReader();
-    reader.onload = async (e) => {
-        try {
-            const data = new Uint8Array(e.target?.result as ArrayBuffer);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            const json = XLSX.utils.sheet_to_json(worksheet, { defval: "", cellDates: true });
 
-            const reverseHeaderMapping = Object.fromEntries(
-                Object.entries(headerMapping).map(([key, value]) => [value, key])
-            );
-            
-            const importedItems: InventoryItem[] = [];
-            let failedCount = 0;
-            const errorLogs: string[] = [];
-
-
-            for (const [index, row] of json.entries()) {
-                const mappedRow: { [key: string]: any } = {};
-                for (const key in row) {
-                    const mappedKey = reverseHeaderMapping[key];
-                    if (mappedKey) {
-                        const value = row[key as keyof typeof row];
-                        // Trim strings to remove leading/trailing whitespace
-                        mappedRow[mappedKey] = typeof value === 'string' ? value.trim() : value;
-                    }
-                }
-                
-                const parsed = inventoryItemSchema.safeParse(mappedRow);
-                
-                if (parsed.success) {
-                    const values = parsed.data;
-                    const fullItem: InventoryItem = {
-                        ...values,
-                        itemVerificationCode: `${values.mainItemLetter}.${values.subItemTypeCode}.${values.subItemOrder}`,
-                        fundingVerificationCode: `${values.fundingSource}.${values.fundingItemOrder}.${values.mainItemLetter}${values.subItemTypeCode}`,
-                        totalRekapCode: `${values.mainItemLetter}${values.subItemTypeCode}`,
-                        combinedFundingRekapCode: `${values.mainItemLetter}${values.subItemTypeCode}${values.fundingSource}`,
-                        disposalRekapCode: values.disposalStatus === 'dihapus' ? `${values.mainItemLetter}${values.subItemTypeCode}-HAPUS` : undefined,
-                    };
-                    importedItems.push(fullItem);
-                } else {
-                    failedCount++;
-                    const formattedErrors = Object.entries(parsed.error.flatten().fieldErrors)
-                        .map(([field, errors]) => `${field}: ${errors.join(', ')}`)
-                        .join('; ');
-                    errorLogs.push(`Baris ${index + 2}: Gagal validasi - ${formattedErrors}`);
-                    console.warn(`Invalid row at Excel index ${index + 2}:`, parsed.error.format());
-                }
-            }
-            
-            if (importedItems.length > 0) {
-              await saveInventoryItemsBatch(importedItems);
-            }
-
-            toast({
-                title: "Impor Selesai",
-                description: `${importedItems.length} data berhasil diimpor. ${failedCount} data gagal/dilewati.`,
-            });
-
-            if (errorLogs.length > 0) {
-              console.error("Detail Kegagalan Impor:\n" + errorLogs.join('\n'));
-               toast({
-                variant: 'destructive',
-                title: 'Beberapa Data Gagal Impor',
-                description: 'Silakan periksa konsol browser (F12) untuk melihat detail error.',
-                duration: 10000,
-              });
-            }
-            
-        } catch (error) {
-            console.error("Failed to import file:", error);
-            toast({
-                variant: 'destructive',
-                title: 'Gagal Impor',
-                description: 'Terjadi kesalahan saat memproses file Excel.',
-            });
-        } finally {
-            setIsImporting(false);
-            // Reset file input
-            if(fileInputRef.current) fileInputRef.current.value = "";
-        }
+    reader.onerror = () => {
+        toast({
+            variant: 'destructive',
+            title: 'Gagal Membaca File',
+            description: 'File mungkin rusak atau tidak dapat diakses.',
+        });
+        setIsImporting(false);
     };
+
+    reader.onload = async (e) => {
+        const fileData = e.target?.result;
+        if (fileData instanceof ArrayBuffer) {
+            await processAndSaveExcelData(fileData);
+        } else {
+            toast({ variant: 'destructive', title: 'Error', description: 'Gagal membaca data file.' });
+        }
+        if(fileInputRef.current) fileInputRef.current.value = "";
+        setIsImporting(false);
+        refreshData();
+    };
+    
     reader.readAsArrayBuffer(file);
   };
 
-
   const columns = React.useMemo<ColumnDef<InventoryItem>[]>(
-    () => columnDefs.filter(c => user?.role === 'admin' || c.id !== 'select'),
-    [user?.role]
-  )
+    () => columnDefs,
+    []
+  );
 
   const table = useReactTable({
     data,
@@ -219,7 +270,6 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
     },
     meta: {
       userRole: user?.role,
-      viewDetails: handleViewDetails,
       deleteItems: handleDeleteRequest,
       editItem: handleEditItem,
     }
@@ -229,8 +279,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
     setIsFormOpen(false);
     setSelectedItem(null);
     refreshData();
-  }
-
+  };
 
   return (
     <div className="w-full flex-1 flex flex-col">
@@ -248,7 +297,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
                 variant="destructive" 
                 className="ml-auto"
                 onClick={() => {
-                    const selectedIds = table.getFilteredSelectedRowModel().rows.map(row => row.original.noData);
+                    const selectedIds = table.getFilteredSelectedRowModel().rows.map(row => row.original.noData).filter(id => id);
                     handleDeleteRequest(selectedIds);
                 }}
              >
@@ -276,12 +325,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
                       column.toggleVisibility(!!value)
                     }
                   >
-                    {column.id === 'itemType' ? 'Jenis Barang' : 
-                     column.id === 'brand' ? 'Merk' : 
-                     column.id === 'area' ? 'Area/Ruang' : 
-                     column.id === 'procurementYear' ? 'Tahun Pengadaan' : 
-                     column.id === 'disposalStatus' ? 'Status' : 
-                     column.id}
+                    {(headerMapping as Record<string, string>)[column.id] || column.id}
                   </DropdownMenuCheckboxItem>
                 );
               })}
@@ -325,7 +369,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead key={header.id} className={cn(header.id === 'select' && user?.role !=='admin' && 'hidden')}>
+                      <TableHead key={header.id} className={cn("whitespace-nowrap px-4 py-2", header.id === 'select' && user?.role !=='admin' && 'hidden')}>
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -346,7 +390,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
                     data-state={row.getIsSelected() && 'selected'}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className={cn(cell.column.id === 'select' && user?.role !== 'admin' && 'hidden')}>
+                      <TableCell key={cell.id} className={cn("whitespace-nowrap px-4 py-2", cell.column.id === 'select' && user?.role !== 'admin' && 'hidden')}>
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()
@@ -394,14 +438,6 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
           </Button>
         </div>
       </div>
-       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detail Barang Inventaris</DialogTitle>
-          </DialogHeader>
-          {selectedItem && <InventoryDetail item={selectedItem} />}
-        </DialogContent>
-      </Dialog>
       <AlertDialog open={isConfirmDeleteDialogOpen} onOpenChange={setIsConfirmDeleteDialogOpen}>
           <AlertDialogContent>
               <AlertDialogHeader>
@@ -420,6 +456,3 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
       </AlertDialog>
     </div>
   );
-}
-
-    
