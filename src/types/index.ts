@@ -67,7 +67,7 @@ export const headerMapping: Record<keyof InventoryItem, string> = {
     keterangan: 'Keterangan',
 };
 
-// Urutan ini HARUS sama persis dengan urutan kolom di file Excel, *setelah* kolom 'No.'.
+// Urutan ini HARUS sama persis dengan urutan kolom di file Excel, *setelah* kolom 'No. Data'.
 export const headerOrder: (keyof InventoryItem)[] = [
     'jenisBarang',
     'indukNoBarang',
