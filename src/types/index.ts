@@ -8,7 +8,41 @@ export type User = {
   role: 'admin' | 'user';
 };
 
-export const headerMapping: { [key: string]: string } = {
+export const inventoryItemSchema = z.object({
+  noData: z.string().optional(),
+  itemType: z.string().optional().or(z.literal('')), 
+  mainItemNumber: z.string().optional().or(z.literal('')), 
+  mainItemLetter: z.string().optional().or(z.literal('')), 
+  subItemType: z.string().optional().or(z.literal('')), 
+  brand: z.string().optional().or(z.literal('')), 
+  modelType: z.string().optional().or(z.literal('')), 
+  description: z.string().optional().or(z.literal('')), 
+  quantity: z.coerce.number().optional().default(0),
+  unit: z.string().optional().or(z.literal('')), 
+  condition: z.string().optional().or(z.literal('')),
+  price: z.coerce.number().optional().default(0),
+  subItemTypeCode: z.string().optional().or(z.literal('')), 
+  subItemOrder: z.string().optional().or(z.literal('')), 
+  fundingSource: z.string().optional().or(z.literal('')), 
+  fundingItemOrder: z.string().optional().or(z.literal('')), 
+  area: z.string().optional().or(z.literal('')), 
+  subArea: z.string().optional().or(z.literal('')), 
+  procurementDate: z.date().optional().nullable(),
+  supplier: z.string().optional().or(z.literal('')), 
+  procurementStatus: z.string().optional().or(z.literal('')),
+  disposalStatus: z.string().optional().or(z.literal('')),
+  disposalDate: z.date().optional().nullable(),
+  itemVerificationCode: z.string().optional(),
+  fundingVerificationCode: z.string().optional(),
+  totalRekapCode: z.string().optional(),
+  disposalRekapCode: z.string().optional(),
+  combinedFundingRekapCode: z.string().optional(),
+});
+
+
+export type InventoryItem = z.infer<typeof inventoryItemSchema>;
+
+export const headerMapping: Record<keyof Partial<InventoryItem>, string> = {
     noData: 'No. Data',
     itemType: 'Jenis Barang',
     mainItemNumber: 'Induk No. Barang',
@@ -39,42 +73,37 @@ export const headerMapping: { [key: string]: string } = {
     combinedFundingRekapCode: 'Kode Rekap Dana'
 };
 
-export const headerOrder = Object.keys(headerMapping);
+export const headerOrder: (keyof InventoryItem)[] = [
+    'noData',
+    'itemType',
+    'mainItemNumber',
+    'mainItemLetter',
+    'subItemType',
+    'brand',
+    'modelType',
+    'description',
+    'quantity',
+    'unit',
+    'condition',
+    'price',
+    'subItemTypeCode',
+    'subItemOrder',
+    'fundingSource',
+    'fundingItemOrder',
+    'area',
+    'subArea',
+    'procurementDate',
+    'supplier',
+    'procurementStatus',
+    'disposalStatus',
+    'disposalDate',
+    'itemVerificationCode',
+    'fundingVerificationCode',
+    'totalRekapCode',
+    'disposalRekapCode',
+    'combinedFundingRekapCode'
+];
 
-export const inventoryItemSchema = z.object({
-  noData: z.string().optional(), // No longer strictly min(1) for import flexibility
-  itemType: z.string().optional().or(z.literal('')), 
-  mainItemNumber: z.string().optional().or(z.literal('')), 
-  mainItemLetter: z.string().optional().or(z.literal('')), 
-  subItemType: z.string().optional().or(z.literal('')), 
-  brand: z.string().optional().or(z.literal('')), 
-  modelType: z.string().optional().or(z.literal('')), 
-  description: z.string().optional().or(z.literal('')), 
-  quantity: z.coerce.number().optional().default(0), // Coerce to number, default to 0
-  unit: z.string().optional().or(z.literal('')), 
-  condition: z.string().optional().or(z.literal('')), // Allow any string for flexibility
-  price: z.coerce.number().optional().default(0), // Coerce to number, default to 0
-  subItemTypeCode: z.string().optional().or(z.literal('')), 
-  subItemOrder: z.string().optional().or(z.literal('')), 
-  fundingSource: z.string().optional().or(z.literal('')), 
-  fundingItemOrder: z.string().optional().or(z.literal('')), 
-  area: z.string().optional().or(z.literal('')), 
-  subArea: z.string().optional().or(z.literal('')), 
-  procurementDate: z.date().optional().nullable(), // Keep date nullable and optional
-  supplier: z.string().optional().or(z.literal('')), 
-  procurementStatus: z.string().optional().or(z.literal('')), // Allow any string for flexibility
-  disposalStatus: z.string().optional().or(z.literal('')), // Allow any string for flexibility
-  disposalDate: z.date().optional().nullable(), // Keep date nullable and optional
-  itemVerificationCode: z.string().optional(),
-  fundingVerificationCode: z.string().optional(),
-  totalRekapCode: z.string().optional(),
-  disposalRekapCode: z.string().optional(),
-  combinedFundingRekapCode: z.string().optional(),
-});
-
-export type InventoryItem = z.infer<typeof inventoryItemSchema>;
-
-// inventoryFormSchema should be stricter, extending from inventoryItemSchema and adding refinements
 export const inventoryFormSchema = inventoryItemSchema.extend({
   noData: z.string().min(1, "Nomor Data tidak boleh kosong"),
   itemType: z.string().min(1, "Jenis Barang tidak boleh kosong"),
@@ -83,7 +112,7 @@ export const inventoryFormSchema = inventoryItemSchema.extend({
   quantity: z.coerce.number().min(1, "Jumlah harus lebih dari 0."),
   unit: z.string().min(1, "Satuan harus diisi."),
   condition: z.enum(['Baik', 'Rusak Ringan', 'Rusak Berat'], { message: "Pilih kondisi barang." }),
-  price: z.coerce.number().min(0, "Harga tidak boleh negatif."),
+  price: z.coerce.number().min(0, "Harga tidak boleh negatif.").default(0),
   area: z.string().min(1, "Area/Ruang tidak boleh kosong"),
   procurementDate: z.date({ required_error: "Tanggal Pengadaan harus diisi." }).nullable().refine(date => date !== null, { message: "Tanggal Pengadaan harus diisi." }),
   procurementStatus: z.enum(['baru', 'second', 'bekas'], { message: "Pilih status pengadaan." }),
@@ -100,3 +129,4 @@ export const inventoryFormSchema = inventoryItemSchema.extend({
 
 
 export type InventoryFormValues = z.infer<typeof inventoryFormSchema>;
+    

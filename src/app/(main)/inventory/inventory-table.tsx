@@ -145,15 +145,18 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
 
             headerOrder.forEach((key, colIndex) => {
                 const rawValue = row[colIndex];
-                let value: any = (rawValue === null || rawValue === undefined || String(rawValue).trim() === '') ? '-' : rawValue;
-                
-                if (key === 'estimatedPrice') {
-                    value = (value === '-') ? 0 : parseFloat(String(value).replace(/[^0-9.-]+/g, ''));
-                    if (isNaN(value)) value = 0;
-                } else if (key !== 'procurementDate' && key !== 'disposalDate') { // Handle all other fields as strings
-                    value = String(value);
-                }
+                let value: any;
 
+                if (key === 'price') {
+                    const numValue = parseFloat(String(rawValue).replace(/[^0-9.-]+/g, ''));
+                    value = isNaN(numValue) ? 0 : numValue;
+                } else if (key === 'quantity') {
+                    const numValue = parseInt(String(rawValue), 10);
+                    value = isNaN(numValue) ? 0 : numValue;
+                } else {
+                    value = (rawValue === null || rawValue === undefined || String(rawValue).trim() === '') ? '-' : String(rawValue);
+                }
+                
                 mappedRow[key as keyof InventoryItem] = value;
             });
             
@@ -456,3 +459,5 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
       </AlertDialog>
     </div>
   );
+}
+    
