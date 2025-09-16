@@ -108,70 +108,37 @@ export const columns: ColumnDef<InventoryItem>[] = [
     enableSorting: false,
     enableHiding: false,
   },
-  {
-    accessorKey: 'jenisBarang',
-    header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
-          Jenis Barang
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-    ),
-    cell: ({ row }) => <div className="capitalize px-4 py-2">{row.getValue('jenisBarang')}</div>,
-  },
-  {
-    accessorKey: 'merkTipe',
-    header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
-        Merk/Tipe
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('merkTipe')}</div>,
-  },
-   {
-    accessorKey: 'jumlah',
-    header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
-        Jumlah
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => <div className="text-center px-4 py-2">{row.getValue('jumlah')}</div>,
-  },
-  {
-    accessorKey: 'satuan',
-    header: 'Satuan',
-    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('satuan')}</div>,
-  },
-  {
-    accessorKey: 'tanggalPengadaan',
-    header: ({ column }) => (
-        <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
-          Tahun Pengadaan
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-    ),
+  { accessorKey: 'noData', header: 'No. Data' },
+  { accessorKey: 'jenisBarang', header: 'Jenis Barang' },
+  { accessorKey: 'indukNoBarang', header: 'Induk No. Barang' },
+  { accessorKey: 'indukHurufBarang', header: 'Induk Huruf Barang' },
+  { accessorKey: 'subJenisBarang', header: 'Sub Jenis Barang' },
+  { accessorKey: 'merkTipe', header: 'Merk/Tipe' },
+  { accessorKey: 'subKodeJenis', header: 'Sub Kode Jenis' },
+  { accessorKey: 'urutSubBarang', header: 'Urut Sub Barang' },
+  { accessorKey: 'sumberDana', header: 'Sumber Dana' },
+  { accessorKey: 'urutBarangDana', header: 'Urut Barang Dana' },
+  { accessorKey: 'areaRuang', header: 'Area/Ruang' },
+  { accessorKey: 'subAreaRuang', header: 'Sub-Area/Ruang' },
+  { 
+    accessorKey: 'tanggalPengadaan', 
+    header: 'Tanggal Pengadaan',
     cell: ({ row }) => {
         const dateValue = row.getValue('tanggalPengadaan');
         if (!dateValue) return <div className="px-4 py-2">-</div>;
         try {
             const date = new Date(dateValue as string | number | Date);
             if (isNaN(date.getTime())) return <div className="px-4 py-2">-</div>;
-            return <div className="px-4 py-2">{format(date, 'yyyy')}</div>;
+            return <div className="px-4 py-2">{format(date, 'yyyy-MM-dd')}</div>;
         } catch (e) {
             return <div className="px-4 py-2">-</div>;
         }
-    },
-    sortingFn: 'datetime'
+    }, 
   },
-  {
-    accessorKey: 'harga',
-    header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
-        Harga (Rp)
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
+  { accessorKey: 'supplier', header: 'Supplier' },
+  { 
+    accessorKey: 'harga', 
+    header: 'Harga (Rp)',
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue('harga'))
       if (isNaN(amount)) return <div className="px-4 py-2">-</div>;
@@ -183,24 +150,40 @@ export const columns: ColumnDef<InventoryItem>[] = [
       return <div className="font-medium px-4 py-2">{formatted}</div>
     },
   },
-  {
-    accessorKey: 'areaRuang',
-    header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
-        Area/Ruang
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('areaRuang')}</div>,
+  { accessorKey: 'statusPengadaan', header: 'Status Pengadaan' },
+  { accessorKey: 'statusBarang', header: 'Status Barang' },
+  { 
+    accessorKey: 'tanggalHapus', 
+    header: 'Tanggal Hapus',
+    cell: ({ row }) => {
+        const dateValue = row.getValue('tanggalHapus');
+        if (!dateValue) return <div className="px-4 py-2">-</div>;
+        try {
+            const date = new Date(dateValue as string | number | Date);
+            if (isNaN(date.getTime())) return <div className="px-4 py-2">-</div>;
+            return <div className="px-4 py-2">{format(date, 'yyyy-MM-dd')}</div>;
+        } catch (e) {
+            return <div className="px-4 py-2">-</div>;
+        }
+    },
   },
-   {
+  { accessorKey: 'kodeVerifikasiBarang', header: 'Kode Verifikasi Barang' },
+  { accessorKey: 'kodeVerifikasiDana', header: 'Kode Verifikasi Dana' },
+  { accessorKey: 'kodeRekapTotal', header: 'Kode Rekap Total' },
+  { accessorKey: 'kodeRekapHapus', header: 'Kode Rekap Hapus' },
+  { accessorKey: 'kodeRekapDana', header: 'Kode Rekap Dana' },
+  // Kolom Tambahan
+  {
+    accessorKey: 'jumlah',
+    header: 'Jumlah',
+  },
+  {
+    accessorKey: 'satuan',
+    header: 'Satuan',
+  },
+  {
     accessorKey: 'kondisi',
-    header: ({ column }) => (
-      <Button variant="ghost" onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')} className="px-4 py-2">
-        Kondisi
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
+    header: 'Kondisi',
     cell: ({ row }) => {
         const kondisi = row.getValue('kondisi') as string;
         let badgeVariant: "default" | "secondary" | "destructive" = "secondary";
@@ -209,6 +192,10 @@ export const columns: ColumnDef<InventoryItem>[] = [
         
         return <div className="px-4 py-2"><Badge variant={badgeVariant} className="capitalize">{kondisi || '-'}</Badge></div>;
     }
+  },
+  {
+    accessorKey: 'keterangan',
+    header: 'Keterangan',
   },
   {
     id: 'actions',

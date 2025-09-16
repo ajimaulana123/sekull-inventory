@@ -39,8 +39,6 @@ const parseFlexibleDate = (value: any): Date | null => {
     if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
 
     if (typeof value === 'number' && value > 0) { // Excel date serial number
-        // Excel's epoch starts on 1900-01-01, but it has a bug where it thinks 1900 is a leap year.
-        // The convention is to treat day 1 as 1900-01-01 and subtract 2 days to align with JS epoch.
         const excelEpoch = new Date(Date.UTC(1899, 11, 30));
         const jsDate = new Date(excelEpoch.getTime() + value * 86400000);
         return isNaN(jsDate.getTime()) ? null : jsDate;
@@ -61,7 +59,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
-    // Hide some columns by default
+    'noData': false,
     'indukNoBarang': false,
     'indukHurufBarang': false,
     'subJenisBarang': false,
@@ -74,7 +72,6 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
     'statusPengadaan': false,
     'statusBarang': false,
     'tanggalHapus': false,
-    'keterangan': false,
     'kodeVerifikasiBarang': false,
     'kodeVerifikasiDana': false,
     'kodeRekapTotal': false,
@@ -149,7 +146,6 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
         if (!sheetName) throw new Error("File Excel tidak memiliki sheet yang valid.");
 
         const worksheet = workbook.Sheets[sheetName];
-        // Read from the second row (index 1) to skip headers
         const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null, range: 1 }) as (string | number | null)[][];
         
         if (json.length === 0) {
@@ -160,12 +156,14 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
         const itemsToSave: InventoryItem[] = [];
 
         for (const [index, row] of json.entries()) {
-            const rowIndex = index + 2; // Excel row number (1-based, plus header)
+            const rowIndex = index + 2;
             let mappedRow: Partial<InventoryItem> = {};
+            
+            const noData = row[0] ? String(row[0]) : `INV-${Date.now()}-${index}`;
+            mappedRow.noData = noData;
 
-            // Menggunakan headerOrder untuk memetakan data sesuai urutan kolom Excel
             headerOrder.forEach((key, colIndex) => {
-                const rawValue = row[colIndex + 1]; // +1 because first column in Excel is 'No.' which we skip
+                const rawValue = row[colIndex + 1];
                 let value: any;
                 
                 if (key === 'harga' || key === 'jumlah') {
@@ -179,15 +177,9 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
                 
                 mappedRow[key as keyof InventoryItem] = value;
             });
-            
-            // Generate a unique ID if one isn't provided
-            const noData = row[0] ? String(row[0]) : `INV-${Date.now()}-${index}`;
-            mappedRow.noData = noData;
 
-            // Add defaults for fields that might not be in the Excel but are in the model
             mappedRow.kondisi = mappedRow.kondisi || 'Baik';
             mappedRow.statusBarang = mappedRow.statusBarang || 'aktif';
-
 
             const parsed = inventoryItemSchema.safeParse(mappedRow);
 
