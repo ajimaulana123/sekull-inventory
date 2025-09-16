@@ -148,12 +148,12 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
                 <FormField control={form.control} name="subJenisBarang" render={({ field }) => ( <FormItem><FormLabel>Sub Jenis Barang</FormLabel><FormControl><Input placeholder="Opsional" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
                 <FormField control={form.control} name="merkTipe" render={({ field }) => ( <FormItem><FormLabel>Merk/Tipe</FormLabel><FormControl><Input placeholder="Contoh: Olympic" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
                 <div className="grid grid-cols-2 gap-2">
-                    <FormField control={form.control} name="indukNoBarang" render={({ field }) => ( <FormItem><FormLabel>Induk No.</FormLabel><FormControl><Input placeholder="No." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={form.control} name="indukHurufBarang" render={({ field }) => ( <FormItem><FormLabel>Induk Huruf</FormLabel><FormControl><Input placeholder="Huruf" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name="indukNoBarang" render={({ field }) => ( <FormItem><FormLabel>Induk No. Barang</FormLabel><FormControl><Input placeholder="No." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name="indukHurufBarang" render={({ field }) => ( <FormItem><FormLabel>Induk Huruf Barang</FormLabel><FormControl><Input placeholder="Huruf" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
                 </div>
                  <div className="grid grid-cols-2 gap-2">
-                    <FormField control={form.control} name="subKodeJenis" render={({ field }) => ( <FormItem><FormLabel>Sub Kode</FormLabel><FormControl><Input placeholder="Kode" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={form.control} name="urutSubBarang" render={({ field }) => ( <FormItem><FormLabel>Urut Sub</FormLabel><FormControl><Input placeholder="Urutan" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name="subKodeJenis" render={({ field }) => ( <FormItem><FormLabel>Sub Kode Jenis</FormLabel><FormControl><Input placeholder="Kode" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name="urutSubBarang" render={({ field }) => ( <FormItem><FormLabel>Urut Sub Barang</FormLabel><FormControl><Input placeholder="Urutan" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
                 </div>
             </div>
         </div>
@@ -167,7 +167,7 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
                 <FormField control={form.control} name="subAreaRuang" render={({ field }) => ( <FormItem><FormLabel>Sub-Area/Ruang</FormLabel><FormControl><Input placeholder="Opsional" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
                  <div className="grid grid-cols-2 gap-2">
                     <FormField control={form.control} name="sumberDana" render={({ field }) => ( <FormItem><FormLabel>Sumber Dana</FormLabel><FormControl><Input placeholder="Contoh: BOS" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
-                    <FormField control={form.control} name="urutBarangDana" render={({ field }) => ( <FormItem><FormLabel>Urut Dana</FormLabel><FormControl><Input placeholder="Urutan" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+                    <FormField control={form.control} name="urutBarangDana" render={({ field }) => ( <FormItem><FormLabel>Urut Barang Dana</FormLabel><FormControl><Input placeholder="Urutan" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
                 </div>
              </div>
         </div>

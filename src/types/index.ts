@@ -106,8 +106,8 @@ export const inventoryFormSchema = z.object({
   jumlah: z.coerce.number().min(1, "Jumlah harus lebih dari 0."),
   satuan: z.string().min(1, "Satuan harus diisi."),
   harga: z.coerce.number().min(0, "Harga tidak boleh negatif.").default(0),
-  kondisi: z.enum(['Baik', 'Rusak Ringan', 'Rusak Berat'], { message: "Pilih kondisi barang." }),
-  statusBarang: z.enum(['aktif', 'dihapus'], { message: "Pilih status barang." }),
+  kondisi: z.string({ required_error: "Pilih kondisi barang." }),
+  statusBarang: z.string({ required_error: "Pilih status barang." }),
   
   // Opsional di form
   tanggalPengadaan: z.date().nullable().optional(),
