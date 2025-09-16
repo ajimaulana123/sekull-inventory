@@ -19,16 +19,6 @@ interface InventoryFormProps {
   initialData?: InventoryItem | null;
 }
 
-const defaultFormValues: InventoryFormValues = {
-  jenisBarang: '',
-  jumlah: 1,
-  satuan: 'buah',
-  kondisi: 'Baik',
-  harga: 0,
-  statusBarang: 'aktif',
-};
-
-// Function to generate a unique ID
 const generateUniqueId = () => {
     return `INV-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 };
@@ -42,11 +32,35 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
   
   const form = useForm<InventoryFormValues>({
     resolver: zodResolver(inventoryFormSchema),
-    defaultValues: defaultFormValues,
+    defaultValues: {
+      // Set default values for all fields in the form
+      jenisBarang: '',
+      merkTipe: '',
+      jumlah: 1,
+      satuan: 'buah',
+      harga: 0,
+      kondisi: 'Baik',
+      statusBarang: 'aktif',
+      tanggalPengadaan: undefined,
+      areaRuang: '',
+      keterangan: '',
+      tanggalHapus: null,
+      indukNoBarang: '',
+      indukHurufBarang: '',
+      subJenisBarang: '',
+      subKodeJenis: '',
+      urutSubBarang: '',
+      sumberDana: '',
+      urutBarangDana: '',
+      subAreaRuang: '',
+      supplier: '',
+      statusPengadaan: '',
+    },
   });
 
   useEffect(() => {
      if (initialData) {
+      // Convert date strings/timestamps from Firestore to Date objects for the form
       const dataForForm: Partial<InventoryFormValues> & { noData?: string } = {
         ...initialData,
         tanggalPengadaan: initialData.tanggalPengadaan ? new Date(initialData.tanggalPengadaan) : undefined,
@@ -61,17 +75,20 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
         setDisplayPrice('');
       }
     } else {
-      form.reset(defaultFormValues);
+      form.reset(); // Reset to defaultValues defined above
       setDisplayPrice('');
     }
   }, [initialData, form]);
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
+    // Remove non-numeric characters
     const numericValue = parseInt(value.replace(/[^0-9]/g, ''), 10) || 0;
 
+    // Set the numeric value for the form state
     form.setValue('harga', numericValue, { shouldValidate: true });
 
+    // Format the value for display
     if (value) {
       setDisplayPrice(new Intl.NumberFormat('id-ID').format(numericValue));
     } else {
@@ -83,10 +100,14 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
   async function onSubmit(values: InventoryFormValues) {
     setIsLoading(true);
     try {
+      // Get the existing noData or generate a new one
+      const noData = isEditing && initialData?.noData ? initialData.noData : generateUniqueId();
+      
       const itemToSave: InventoryItem = {
-          ...initialData, // keep all original data
-          ...values, // overwrite with form values
-          noData: isEditing && initialData?.noData ? initialData.noData : generateUniqueId(),
+          ...initialData, // Keep all original data not in the form
+          noData: noData,
+          // Overwrite with form values
+          ...values, 
           // Generate codes based on form values
           kodeVerifikasiBarang: `${values.indukHurufBarang || ''}.${values.subKodeJenis || ''}.${values.urutSubBarang || ''}`.replace(/^\.+|\.+$/g, ''),
           kodeVerifikasiDana: `${values.sumberDana || ''}.${values.urutBarangDana || ''}.${values.indukHurufBarang || ''}${values.subKodeJenis || ''}`.replace(/^\.+|\.+$/g, ''),
@@ -162,7 +183,7 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <FormField control={form.control} name="kondisi" render={({ field }) => ( <FormItem><FormLabel>Kondisi Barang</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih kondisi" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Baik">Baik</SelectItem><SelectItem value="Rusak Ringan">Rusak Ringan</SelectItem><SelectItem value="Rusak Berat">Rusak Berat</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
-                  <FormField control={form.control} name="keterangan" render={({ field }) => ( <FormItem><FormLabel>Keterangan</FormLabel><FormControl><Textarea placeholder="Keterangan tambahan" {...field} value={field.value || ''} /></FormControl><FormItem /></FormItem> )} />
+                  <FormField control={form.control} name="keterangan" render={({ field }) => ( <FormItem><FormLabel>Keterangan</FormLabel><FormControl><Textarea placeholder="Keterangan tambahan" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
             </div>
         </div>
         

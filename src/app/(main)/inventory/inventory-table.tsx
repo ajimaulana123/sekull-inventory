@@ -38,7 +38,10 @@ const parseFlexibleDate = (value: any): Date | null => {
     if (!value || value === '-') return null;
     if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
 
-    if (typeof value === 'number' && value > 0) { // Excel date serial number
+    // Handle Excel's integer date format
+    if (typeof value === 'number' && value > 0) {
+        // Excel's epoch starts on 1899-12-30, not 1900-01-01, due to a bug.
+        // JS epoch is 1970-01-01. The difference is 25569 days.
         const excelEpoch = new Date(Date.UTC(1899, 11, 30));
         const jsDate = new Date(excelEpoch.getTime() + value * 86400000);
         return isNaN(jsDate.getTime()) ? null : jsDate;
@@ -59,7 +62,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
-    'noData': false,
+    // Hide most columns by default to simplify the initial view
     'indukNoBarang': false,
     'indukHurufBarang': false,
     'subJenisBarang': false,
@@ -70,13 +73,13 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
     'subAreaRuang': false,
     'supplier': false,
     'statusPengadaan': false,
-    'statusBarang': false,
     'tanggalHapus': false,
     'kodeVerifikasiBarang': false,
     'kodeVerifikasiDana': false,
     'kodeRekapTotal': false,
     'kodeRekapHapus': false,
     'kodeRekapDana': false,
+    'keterangan': false
   });
   const [rowSelection, setRowSelection] = React.useState({});
   
@@ -146,6 +149,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
         if (!sheetName) throw new Error("File Excel tidak memiliki sheet yang valid.");
 
         const worksheet = workbook.Sheets[sheetName];
+        // Read data starting from the second row (index 1) to skip headers
         const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null, range: 1 }) as (string | number | null)[][];
         
         if (json.length === 0) {
@@ -156,37 +160,47 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
         const itemsToSave: InventoryItem[] = [];
 
         for (const [index, row] of json.entries()) {
-            const rowIndex = index + 2;
-            let mappedRow: Partial<InventoryItem> = {};
+            const rowIndex = index + 2; // Excel row number (1-based, plus header)
             
+            // Generate a unique ID if the 'No. Data' column is empty
             const noData = row[0] ? String(row[0]) : `INV-${Date.now()}-${index}`;
-            mappedRow.noData = noData;
+            let mappedRow: Partial<InventoryItem> = { noData };
 
+            // Map columns based on the definitive headerOrder
             headerOrder.forEach((key, colIndex) => {
-                const rawValue = row[colIndex + 1];
+                const rawValue = row[colIndex + 1]; // +1 because 'No. Data' is at index 0 of the row
                 let value: any;
                 
+                // Special handling for numeric fields
                 if (key === 'harga' || key === 'jumlah') {
                     const numValue = parseFloat(String(rawValue));
-                    value = isNaN(numValue) ? 0 : numValue;
-                } else if (key === 'tanggalPengadaan' || key === 'tanggalHapus') {
+                    value = isNaN(numValue) ? 0 : numValue; // Default to 0 if not a valid number
+                } 
+                // Special handling for date fields
+                else if (key === 'tanggalPengadaan' || key === 'tanggalHapus') {
                     value = parseFlexibleDate(rawValue);
-                } else {
+                } 
+                // For all other text-based fields
+                else {
                      value = (rawValue === null || rawValue === undefined || String(rawValue).trim() === '') ? '-' : String(rawValue);
                 }
                 
                 mappedRow[key as keyof InventoryItem] = value;
             });
 
+            // Set default values for critical fields if they are still missing
             mappedRow.kondisi = mappedRow.kondisi || 'Baik';
             mappedRow.statusBarang = mappedRow.statusBarang || 'aktif';
+            mappedRow.satuan = mappedRow.satuan || 'buah';
 
+            // Validate the mapped row against the schema
             const parsed = inventoryItemSchema.safeParse(mappedRow);
 
             if (parsed.success) {
                 const { data: values } = parsed;
                 const finalItem: InventoryItem = {
                     ...values,
+                    // Generate codes based on the validated data
                     kodeVerifikasiBarang: `${values.indukHurufBarang || ''}.${values.subKodeJenis || ''}.${values.urutSubBarang || ''}`.replace(/^\.+|\.+$/g, ''),
                     kodeVerifikasiDana: `${values.sumberDana || ''}.${values.urutBarangDana || ''}.${values.indukHurufBarang || ''}${values.subKodeJenis || ''}`.replace(/^\.+|\.+$/g, ''),
                     kodeRekapTotal: `${values.indukHurufBarang || ''}${values.subKodeJenis || ''}`,
@@ -220,6 +234,12 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
             toast({
                 title: "Impor Selesai",
                 description: `${importedItemsCount} dari ${json.length} data berhasil diimpor.`,
+            });
+        } else if (errorLogs.length === 0) {
+            toast({
+                variant: 'destructive',
+                title: 'Impor Gagal',
+                description: 'Tidak ada data yang dapat diimpor dari file. Periksa format file Anda.',
             });
         }
 
@@ -256,7 +276,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
         } else {
             toast({ variant: 'destructive', title: 'Error', description: 'Gagal membaca data file.' });
         }
-        if(fileInputRef.current) fileInputRef.current.value = "";
+        if(fileInputRef.current) fileInputRef.current.value = ""; // Reset file input
         setIsImporting(false);
         refreshData();
     };
@@ -329,7 +349,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
               <SlidersHorizontal className="mr-2 h-4 w-4" /> Tampilkan Kolom
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="max-h-96 overflow-y-auto">
             {table
               .getAllColumns()
               .filter((column) => column.getCanHide())
@@ -387,7 +407,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead key={header.id} className={cn("whitespace-nowrap px-4 py-2", header.id === 'select' && user?.role !=='admin' && 'hidden')}>
+                      <TableHead key={header.id} className={cn("whitespace-nowrap px-2 py-2 text-xs", header.id === 'select' && user?.role !=='admin' && 'hidden')}>
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -408,7 +428,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
                     data-state={row.getIsSelected() && 'selected'}
                   >
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id} className={cn("whitespace-nowrap px-4 py-2", cell.column.id === 'select' && user?.role !== 'admin' && 'hidden')}>
+                      <TableCell key={cell.id} className={cn("whitespace-nowrap px-2 py-1 text-xs", cell.column.id === 'select' && user?.role !== 'admin' && 'hidden')}>
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext()

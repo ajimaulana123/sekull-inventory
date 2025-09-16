@@ -3,8 +3,8 @@
 import type { ColumnDef, CellContext } from '@tanstack/react-table';
 import type { InventoryItem } from '@/types';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown, MoreHorizontal } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -15,13 +15,8 @@ const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
   const userRole = table.options.meta?.userRole;
   const { toast } = useToast();
 
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  const deleteItems = table.options.meta?.deleteItems;
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  const editItem = table.options.meta?.editItem;
-
+  const deleteItems = table.options.meta?.deleteItems as (itemIds: string[]) => void;
+  const editItem = table.options.meta?.editItem as (item: InventoryItem) => void;
 
   if (!userRole) {
     return null;
@@ -73,6 +68,18 @@ const ActionsCell = ({ row, table }: CellContext<InventoryItem, unknown>) => {
   );
 };
 
+const formatDate = (dateValue: unknown) => {
+    if (!dateValue) return <div className="px-4 py-2">-</div>;
+    try {
+        const date = new Date(dateValue as string | number | Date);
+        // Check if date is valid
+        if (isNaN(date.getTime())) return <div className="px-4 py-2">-</div>;
+        return <div className="px-4 py-2">{format(date, 'yyyy-MM-dd')}</div>;
+    } catch (e) {
+        return <div className="px-4 py-2">-</div>;
+    }
+}
+
 export const columns: ColumnDef<InventoryItem>[] = [
   {
     id: 'select',
@@ -80,7 +87,7 @@ export const columns: ColumnDef<InventoryItem>[] = [
       const userRole = table.options.meta?.userRole;
       if (userRole !== 'admin') return null;
       return (
-        <div className="px-4 py-2">
+        <div className="px-1">
           <Checkbox
             checked={
               table.getIsAllPageRowsSelected() ||
@@ -96,7 +103,7 @@ export const columns: ColumnDef<InventoryItem>[] = [
        const userRole = table.options.meta?.userRole;
        if (userRole !== 'admin') return null;
        return (
-        <div className="px-4 py-2">
+        <div className="px-1">
           <Checkbox
             checked={row.getIsSelected()}
             onCheckedChange={(value) => row.toggleSelected(!!value)}
@@ -108,6 +115,7 @@ export const columns: ColumnDef<InventoryItem>[] = [
     enableSorting: false,
     enableHiding: false,
   },
+  // Kolom dari gambar
   { accessorKey: 'noData', header: 'No. Data' },
   { accessorKey: 'jenisBarang', header: 'Jenis Barang' },
   { accessorKey: 'indukNoBarang', header: 'Induk No. Barang' },
@@ -123,17 +131,7 @@ export const columns: ColumnDef<InventoryItem>[] = [
   { 
     accessorKey: 'tanggalPengadaan', 
     header: 'Tanggal Pengadaan',
-    cell: ({ row }) => {
-        const dateValue = row.getValue('tanggalPengadaan');
-        if (!dateValue) return <div className="px-4 py-2">-</div>;
-        try {
-            const date = new Date(dateValue as string | number | Date);
-            if (isNaN(date.getTime())) return <div className="px-4 py-2">-</div>;
-            return <div className="px-4 py-2">{format(date, 'yyyy-MM-dd')}</div>;
-        } catch (e) {
-            return <div className="px-4 py-2">-</div>;
-        }
-    }, 
+    cell: ({ row }) => formatDate(row.getValue('tanggalPengadaan')), 
   },
   { accessorKey: 'supplier', header: 'Supplier' },
   { 
@@ -147,7 +145,7 @@ export const columns: ColumnDef<InventoryItem>[] = [
         currency: 'IDR',
         minimumFractionDigits: 0
       }).format(amount)
-      return <div className="font-medium px-4 py-2">{formatted}</div>
+      return <div className="font-medium px-4 py-2 text-right">{formatted}</div>
     },
   },
   { accessorKey: 'statusPengadaan', header: 'Status Pengadaan' },
@@ -155,17 +153,7 @@ export const columns: ColumnDef<InventoryItem>[] = [
   { 
     accessorKey: 'tanggalHapus', 
     header: 'Tanggal Hapus',
-    cell: ({ row }) => {
-        const dateValue = row.getValue('tanggalHapus');
-        if (!dateValue) return <div className="px-4 py-2">-</div>;
-        try {
-            const date = new Date(dateValue as string | number | Date);
-            if (isNaN(date.getTime())) return <div className="px-4 py-2">-</div>;
-            return <div className="px-4 py-2">{format(date, 'yyyy-MM-dd')}</div>;
-        } catch (e) {
-            return <div className="px-4 py-2">-</div>;
-        }
-    },
+    cell: ({ row }) => formatDate(row.getValue('tanggalHapus')),
   },
   { accessorKey: 'kodeVerifikasiBarang', header: 'Kode Verifikasi Barang' },
   { accessorKey: 'kodeVerifikasiDana', header: 'Kode Verifikasi Dana' },
