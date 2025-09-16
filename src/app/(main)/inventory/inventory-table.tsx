@@ -61,26 +61,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
   const { toast } = useToast();
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({
-    // Hide most columns by default to simplify the initial view
-    'indukNoBarang': false,
-    'indukHurufBarang': false,
-    'subJenisBarang': false,
-    'subKodeJenis': false,
-    'urutSubBarang': false,
-    'sumberDana': false,
-    'urutBarangDana': false,
-    'subAreaRuang': false,
-    'supplier': false,
-    'statusPengadaan': false,
-    'tanggalHapus': false,
-    'kodeVerifikasiBarang': false,
-    'kodeVerifikasiDana': false,
-    'kodeRekapTotal': false,
-    'kodeRekapHapus': false,
-    'kodeRekapDana': false,
-    'keterangan': false
-  });
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   
   const [isFormOpen, setIsFormOpen] = React.useState(false);
