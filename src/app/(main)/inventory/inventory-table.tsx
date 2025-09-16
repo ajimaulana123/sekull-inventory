@@ -123,12 +123,10 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
     try {
         const data = new Uint8Array(fileData);
         const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-        // Assuming the relevant data is in the first sheet
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) throw new Error("File Excel tidak memiliki sheet yang valid.");
 
         const worksheet = workbook.Sheets[sheetName];
-        // Start reading from the second row (index 1) to skip the header
         const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null, range: 1 }) as (string | number | null)[][];
         
         if (json.length === 0) {
@@ -139,34 +137,38 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
         const itemsToSave: InventoryItem[] = [];
 
         for (const [index, row] of json.entries()) {
-             // Excel row number is index + 2 (since we skip header row and index is 0-based)
             const rowIndex = index + 2;
             let mappedRow: Partial<InventoryItem> = {};
 
-            // We ignore the first column of the excel file (the 'No.' column)
+            // Menggunakan headerOrder untuk memetakan data sesuai urutan kolom Excel
             headerOrder.forEach((key, colIndex) => {
-                const rawValue = row[colIndex + 1]; // +1 to skip the first excel column
+                const excelColIndex = colIndex + 1; // +1 untuk melewati kolom 'No.' di Excel
+                const rawValue = row[excelColIndex];
                 let value: any;
                 
-                if (key === 'estimatedPrice' || key === 'price' || key === 'quantity') {
+                if (key === 'harga' || key === 'jumlah') {
                     const numValue = parseFloat(String(rawValue));
                     value = isNaN(numValue) ? 0 : numValue;
-                } else if (key === 'procurementDate' || key === 'disposalDate') {
+                } else if (key === 'tanggalPengadaan' || key === 'tanggalHapus') {
                     value = parseFlexibleDate(rawValue);
-                }
-                else {
-                    value = (rawValue === null || rawValue === undefined || String(rawValue).trim() === '') ? '-' : String(rawValue);
+                } else {
+                     value = (rawValue === null || rawValue === undefined || String(rawValue).trim() === '') ? '-' : String(rawValue);
                 }
                 
                 mappedRow[key as keyof InventoryItem] = value;
             });
+
+            // Tambahan kolom yang tidak ada di Excel tapi ada di form
+            if (!row[headerOrder.indexOf('jumlah') + 1]) mappedRow.jumlah = 1;
+            if (!row[headerOrder.indexOf('satuan') + 1]) mappedRow.satuan = 'buah';
+            if (!row[headerOrder.indexOf('kondisi') + 1]) mappedRow.kondisi = 'Baik';
+            if (!row[headerOrder.indexOf('keterangan') + 1]) mappedRow.keterangan = '-';
             
-            const noData = mappedRow.noData && mappedRow.noData !== '-' ? mappedRow.noData : `INV-${Date.now()}-${index}`;
+            const noData = `INV-${Date.now()}-${index}`;
             mappedRow.noData = noData;
 
-            const sanitized = {
-                ...mappedRow,
-            }
+            // Pastikan semua field dari skema ada di objek, meskipun undefined
+            const sanitized = { ...Object.fromEntries(headerOrder.map(k => [k, undefined])), ...mappedRow };
 
             const parsed = inventoryItemSchema.safeParse(sanitized);
 
@@ -174,15 +176,11 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
                 const { data: values } = parsed;
                 itemsToSave.push({
                     ...values,
-                    itemVerificationCode: `${values.mainItemLetter || ''}.${values.subItemTypeCode || ''}.${values.subItemOrder || ''}`.replace(/^\.+|\.+$/g, ''),
-                    fundingVerificationCode: `${values.fundingSource || ''}.${values.fundingItemOrder || ''}.${values.mainItemLetter || ''}${values.subItemTypeCode || ''}`.replace(/^\.+|\.+$/g, ''),
-                    totalRekapCode: `${values.mainItemLetter || ''}${values.subItemTypeCode || ''}`,
-                    combinedFundingRekapCode: `${values.mainItemLetter || ''}${values.subItemTypeCode || ''}${values.fundingSource || ''}`,
-                    disposalRekapCode: values.disposalStatus === 'dihapus' ? `${values.mainItemLetter || ''}${values.subItemTypeCode || ''}-HAPUS` : undefined,
+                    // Kode-kode ini bisa digenerate di sini jika diperlukan
                 });
             } else {
                 const flatErrors = parsed.error.flatten();
-                const errorMessages = Object.entries(flatErrors.fieldErrors).map(([field, messages]) => `${field}: ${messages.join(', ')}`).join('; ');
+                const errorMessages = Object.entries(flatErrors.fieldErrors).map(([field, messages]) => `${(headerMapping as any)[field] || field}: ${messages.join(', ')}`).join('; ');
                 errorLogs.push(`Baris ${rowIndex}: Gagal validasi - ${errorMessages}`);
             }
         }
@@ -288,9 +286,9 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
       <div className="flex items-center py-4 gap-4">
         <Input
           placeholder="Cari berdasarkan jenis barang..."
-          value={(table.getColumn('itemType')?.getFilterValue() as string) ?? ''}
+          value={(table.getColumn('jenisBarang')?.getFilterValue() as string) ?? ''}
           onChange={(event) =>
-            table.getColumn('itemType')?.setFilterValue(event.target.value)
+            table.getColumn('jenisBarang')?.setFilterValue(event.target.value)
           }
           className="max-w-sm"
         />

@@ -30,14 +30,13 @@ export function InventoryDetail({ item }: InventoryDetailProps) {
                     <CardTitle className="text-lg">Data Utama</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <DetailRow label="No. Data" value={item.noData} />
-                    <DetailRow label="Jenis Barang" value={item.itemType} />
-                    <DetailRow label="Merk/Tipe" value={item.brand} />
-                    <DetailRow label="Sub Jenis Barang" value={item.subItemType} />
-                    <DetailRow label="Induk No. Barang" value={item.mainItemNumber} />
-                    <DetailRow label="Induk Huruf Barang" value={item.mainItemLetter} />
-                    <DetailRow label="Sub Kode Jenis" value={item.subItemTypeCode} />
-                    <DetailRow label="Urut Sub Barang" value={item.subItemOrder} />
+                    <DetailRow label="Jenis Barang" value={item.jenisBarang} />
+                    <DetailRow label="Merk/Tipe" value={item.merkTipe} />
+                    <DetailRow label="Sub Jenis Barang" value={item.subJenisBarang} />
+                    <DetailRow label="Induk No. Barang" value={item.indukNoBarang} />
+                    <DetailRow label="Induk Huruf Barang" value={item.indukHurufBarang} />
+                    <DetailRow label="Sub Kode Jenis" value={item.subKodeJenis} />
+                    <DetailRow label="Urut Sub Barang" value={item.urutSubBarang} />
                 </CardContent>
             </Card>
 
@@ -46,23 +45,28 @@ export function InventoryDetail({ item }: InventoryDetailProps) {
                     <CardTitle className="text-lg">Lokasi & Pendanaan</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <DetailRow label="Area/Ruang" value={item.area} />
-                    <DetailRow label="Sub-Area/Ruang" value={item.subArea} />
+                    <DetailRow label="Area/Ruang" value={item.areaRuang} />
+                    <DetailRow label="Sub-Area/Ruang" value={item.subAreaRuang} />
                     <Separator className="my-4" />
-                    <DetailRow label="Sumber Pendanaan" value={item.fundingSource} />
-                    <DetailRow label="Urut Barang Pendanaan" value={item.fundingItemOrder} />
+                    <DetailRow label="Sumber Pendanaan" value={item.sumberDana} />
+                    <DetailRow label="Urut Barang Pendanaan" value={item.urutBarangDana} />
                 </CardContent>
             </Card>
 
             <Card>
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-lg">Detail Pengadaan</CardTitle>
+                    <CardTitle className="text-lg">Detail Pengadaan & Kondisi</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <DetailRow label="Tanggal Pengadaan" value={item.procurementDate ? format(new Date(item.procurementDate), 'PPP', { locale: id }) : '-'} />
-                    <DetailRow label="Status Pengadaan" value={item.procurementStatus} />
+                    <DetailRow label="Tanggal Pengadaan" value={item.tanggalPengadaan ? format(new Date(item.tanggalPengadaan), 'PPP', { locale: id }) : '-'} />
+                    <DetailRow label="Status Pengadaan" value={item.statusPengadaan} />
                     <DetailRow label="Supplier" value={item.supplier} />
-                    <DetailRow label="Perkiraan Harga" value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.estimatedPrice)} />
+                    <DetailRow label="Harga" value={new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(item.harga || 0)} />
+                     <Separator className="my-4" />
+                    <DetailRow label="Jumlah" value={item.jumlah} />
+                    <DetailRow label="Satuan" value={item.satuan} />
+                    <DetailRow label="Kondisi" value={item.kondisi} />
+                    <DetailRow label="Keterangan" value={item.keterangan} />
                 </CardContent>
             </Card>
             
@@ -71,16 +75,16 @@ export function InventoryDetail({ item }: InventoryDetailProps) {
                     <CardTitle className="text-lg">Status & Kode</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <DetailRow label="Status Barang" value={item.disposalStatus} />
-                    {item.disposalStatus === 'dihapus' && (
-                         <DetailRow label="Tanggal Penghapusan" value={item.disposalDate ? format(new Date(item.disposalDate), 'PPP', { locale: id }) : '-'} />
+                    <DetailRow label="Status Barang" value={item.statusBarang} />
+                    {item.statusBarang === 'dihapus' && (
+                         <DetailRow label="Tanggal Penghapusan" value={item.tanggalHapus ? format(new Date(item.tanggalHapus), 'PPP', { locale: id }) : '-'} />
                     )}
                      <Separator className="my-4" />
-                    <DetailRow label="Kode Verifikasi Barang" value={item.itemVerificationCode} />
-                    <DetailRow label="Kode Verifikasi Dana" value={item.fundingVerificationCode} />
-                    <DetailRow label="Kode Rekap Total" value={item.totalRekapCode} />
-                    <DetailRow label="Kode Rekap Dana" value={item.combinedFundingRekapCode} />
-                    {item.disposalRekapCode && <DetailRow label="Kode Rekap Hapus" value={item.disposalRekapCode} />}
+                    <DetailRow label="Kode Verifikasi Barang" value={item.kodeVerifikasiBarang} />
+                    <DetailRow label="Kode Verifikasi Dana" value={item.kodeVerifikasiDana} />
+                    <DetailRow label="Kode Rekap Total" value={item.kodeRekapTotal} />
+                    <DetailRow label="Kode Rekap Dana" value={item.kodeRekapDana} />
+                    {item.kodeRekapHapus && <DetailRow label="Kode Rekap Hapus" value={item.kodeRekapHapus} />}
                 </CardContent>
             </Card>
         </div>

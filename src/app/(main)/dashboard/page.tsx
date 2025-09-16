@@ -35,18 +35,18 @@ export default function Dashboard() {
     );
   }
 
-  const totalItems = inventoryData.length;
-  const activeItems = inventoryData.filter(item => item.disposalStatus === 'aktif').length;
+  const totalItems = inventoryData.reduce((sum, item) => sum + (item.jumlah || 0), 0);
+  const activeItems = inventoryData.filter(item => item.statusBarang === 'aktif').reduce((sum, item) => sum + (item.jumlah || 0), 0);
   const disposedItems = totalItems - activeItems;
-  const totalValue = inventoryData.reduce((sum, item) => sum + item.estimatedPrice, 0);
+  const totalValue = inventoryData.reduce((sum, item) => sum + (item.harga || 0), 0);
 
   const dataByYear = inventoryData.reduce((acc, item) => {
-    if (!item.procurementDate) return acc;
-    const year = new Date(item.procurementDate).getFullYear();
+    if (!item.tanggalPengadaan) return acc;
+    const year = new Date(item.tanggalPengadaan).getFullYear();
     if (!acc[year]) {
       acc[year] = { year, total: 0 };
     }
-    acc[year].total++;
+    acc[year].total += (item.jumlah || 0);
     return acc;
   }, {} as Record<string, { year: number; total: number }>);
   

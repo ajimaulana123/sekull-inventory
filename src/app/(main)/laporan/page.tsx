@@ -20,28 +20,32 @@ type FileFormat = 'csv' | 'xlsx' | 'pdf';
 // Mapping untuk header kolom ke Bahasa Indonesia
 export const headerMapping: { [key in keyof Partial<InventoryItem>]?: string } = {
     noData: "No. Data",
-    itemType: "Jenis Barang",
-    mainItemNumber: "Induk No. Barang",
-    mainItemLetter: "Induk Huruf Barang",
-    subItemType: "Sub Jenis Barang",
-    brand: "Merk/Tipe",
-    subItemTypeCode: "Sub Kode Jenis",
-    subItemOrder: "Urut Sub Barang",
-    fundingSource: "Sumber Dana",
-    fundingItemOrder: "Urut Barang Dana",
-    area: "Area/Ruang",
-    subArea: "Sub-Area/Ruang",
-    procurementDate: "Tanggal Pengadaan",
+    jenisBarang: "Jenis Barang",
+    indukNoBarang: "Induk No. Barang",
+    indukHurufBarang: "Induk Huruf Barang",
+    subJenisBarang: "Sub Jenis Barang",
+    merkTipe: "Merk/Tipe",
+    subKodeJenis: "Sub Kode Jenis",
+    urutSubBarang: "Urut Sub Barang",
+    sumberDana: "Sumber Dana",
+    urutBarangDana: "Urut Barang Dana",
+    areaRuang: "Area/Ruang",
+    subAreaRuang: "Sub-Area/Ruang",
+    tanggalPengadaan: "Tanggal Pengadaan",
     supplier: "Supplier",
-    estimatedPrice: "Harga (Rp)",
-    procurementStatus: "Status Pengadaan",
-    disposalStatus: "Status Barang",
-    disposalDate: "Tanggal Hapus",
-    itemVerificationCode: "Kode Verifikasi Barang",
-    fundingVerificationCode: "Kode Verifikasi Dana",
-    totalRekapCode: "Kode Rekap Total",
-    disposalRekapCode: "Kode Rekap Hapus",
-    combinedFundingRekapCode: "Kode Rekap Dana"
+    harga: "Harga (Rp)",
+    statusPengadaan: "Status Pengadaan",
+    statusBarang: "Status Barang",
+    tanggalHapus: "Tanggal Hapus",
+    kodeVerifikasiBarang: "Kode Verifikasi Barang",
+    kodeVerifikasiDana: "Kode Verifikasi Dana",
+    kodeRekapTotal: "Kode Rekap Total",
+    kodeRekapHapus: "Kode Rekap Hapus",
+    kodeRekapDana: "Kode Rekap Dana",
+    jumlah: "Jumlah",
+    satuan: "Satuan",
+    kondisi: "Kondisi",
+    keterangan: "Keterangan"
 };
 
 
@@ -74,16 +78,16 @@ export default function LaporanPage() {
         let filteredData = [...inventoryData];
 
         if (reportType === 'active') {
-            filteredData = filteredData.filter(item => item.disposalStatus === 'aktif');
+            filteredData = filteredData.filter(item => item.statusBarang === 'aktif');
         } else if (reportType === 'disposed') {
-            filteredData = filteredData.filter(item => item.disposalStatus === 'dihapus');
+            filteredData = filteredData.filter(item => item.statusBarang === 'dihapus');
         }
 
         if (reportType === 'procurement' && dateRange?.from && dateRange?.to) {
             filteredData = filteredData.filter(item => {
-                if (!item.procurementDate) return false;
+                if (!item.tanggalPengadaan) return false;
                 try {
-                    const itemDate = new Date(item.procurementDate);
+                    const itemDate = new Date(item.tanggalPengadaan);
                     return itemDate >= dateRange.from! && itemDate <= dateRange.to!;
                 } catch (e) {
                     return false;
@@ -205,7 +209,7 @@ export default function LaporanPage() {
                     const itemStartY = yPos;
                     doc.setFontSize(11);
                     doc.setFont('helvetica', 'bold');
-                    doc.text(`BARANG #${index + 1}: ${item.itemType} - ${item.brand}`, pageMargin, yPos);
+                    doc.text(`BARANG #${index + 1}: ${item.jenisBarang} - ${item.merkTipe}`, pageMargin, yPos);
                     yPos += 6;
 
                     doc.setFontSize(9);
@@ -218,7 +222,7 @@ export default function LaporanPage() {
                                 let displayValue: string | number;
                                 if (value instanceof Date) {
                                     displayValue = format(value, 'PPP', { locale: id });
-                                } else if (key === 'estimatedPrice') {
+                                } else if (key === 'harga') {
                                     displayValue = new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR' }).format(Number(value));
                                 } else {
                                     displayValue = value as string | number;
@@ -293,7 +297,7 @@ export default function LaporanPage() {
         return (
              <div className="flex flex-col gap-6">
                 <div>
-                    <h1 className="text-3dcl font-bold font-headline tracking-tight">Laporan Inventaris</h1>
+                    <h1 className="text-3xl font-bold font-headline tracking-tight">Laporan Inventaris</h1>
                     <p className="text-muted-foreground">Buat dan unduh laporan data inventaris sekolah.</p>
                 </div>
                 <div className="flex-1 flex items-center justify-center">

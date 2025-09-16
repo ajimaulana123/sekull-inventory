@@ -109,7 +109,7 @@ export const columns: ColumnDef<InventoryItem>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: 'itemType',
+    accessorKey: 'jenisBarang',
     header: ({ column }) => {
       return (
         <Button
@@ -122,10 +122,10 @@ export const columns: ColumnDef<InventoryItem>[] = [
         </Button>
       );
     },
-    cell: ({ row }) => <div className="capitalize px-4 py-2">{row.getValue('itemType')}</div>,
+    cell: ({ row }) => <div className="capitalize px-4 py-2">{row.getValue('jenisBarang')}</div>,
   },
   {
-    accessorKey: 'brand',
+    accessorKey: 'merkTipe',
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -136,24 +136,10 @@ export const columns: ColumnDef<InventoryItem>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('brand')}</div>,
-  },
-  {
-    accessorKey: 'modelType',
-    header: ({ column }) => (
-      <Button
-        variant="ghost"
-        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-        className="px-4 py-2"
-      >
-        Model/Tipe
-        <ArrowUpDown className="ml-2 h-4 w-4" />
-      </Button>
-    ),
-    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('modelType')}</div>,
+    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('merkTipe')}</div>,
   },
    {
-    accessorKey: 'quantity',
+    accessorKey: 'jumlah',
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -164,10 +150,10 @@ export const columns: ColumnDef<InventoryItem>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('quantity')}</div>,
+    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('jumlah')}</div>,
   },
   {
-    accessorKey: 'unit',
+    accessorKey: 'satuan',
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -178,10 +164,10 @@ export const columns: ColumnDef<InventoryItem>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('unit')}</div>,
+    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('satuan')}</div>,
   },
   {
-    accessorKey: 'procurementDate',
+    accessorKey: 'tanggalPengadaan',
     header: ({ column }) => {
       return (
         <Button
@@ -195,14 +181,14 @@ export const columns: ColumnDef<InventoryItem>[] = [
       );
     },
     cell: ({ row }) => {
-        const date = row.getValue('procurementDate') as Date;
+        const date = row.getValue('tanggalPengadaan') as Date;
         if (!date) return '-';
         return <div className="px-4 py-2">{format(date, 'yyyy')}</div>;
     },
     sortingFn: 'datetime'
   },
   {
-    accessorKey: 'price',
+    accessorKey: 'harga',
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -214,7 +200,7 @@ export const columns: ColumnDef<InventoryItem>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue('price'))
+      const amount = parseFloat(row.getValue('harga'))
       if (isNaN(amount)) return '-';
       const formatted = new Intl.NumberFormat('id-ID', {
         style: 'currency',
@@ -224,7 +210,7 @@ export const columns: ColumnDef<InventoryItem>[] = [
     },
   },
   {
-    accessorKey: 'area',
+    accessorKey: 'areaRuang',
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -235,10 +221,10 @@ export const columns: ColumnDef<InventoryItem>[] = [
         <ArrowUpDown className="ml-2 h-4 w-4" />
       </Button>
     ),
-    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('area')}</div>,
+    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('areaRuang')}</div>,
   },
    {
-    accessorKey: 'condition',
+    accessorKey: 'kondisi',
     header: ({ column }) => (
       <Button
         variant="ghost"
@@ -250,18 +236,18 @@ export const columns: ColumnDef<InventoryItem>[] = [
       </Button>
     ),
     cell: ({ row }) => {
-        const condition = row.getValue('condition') as string;
+        const kondisi = row.getValue('kondisi') as string;
         let badgeVariant: "default" | "secondary" | "destructive" = "secondary";
-        if (condition === 'Baik') badgeVariant = 'default';
-        if (condition === 'Rusak Berat') badgeVariant = 'destructive';
+        if (kondisi === 'Baik') badgeVariant = 'default';
+        if (kondisi === 'Rusak Berat') badgeVariant = 'destructive';
         
-        return <div className="px-4 py-2"><Badge variant={badgeVariant} className="capitalize">{condition}</Badge></div>;
+        return <div className="px-4 py-2"><Badge variant={badgeVariant} className="capitalize">{kondisi}</Badge></div>;
     }
   },
   {
-    accessorKey: 'description',
+    accessorKey: 'keterangan',
     header: 'Keterangan',
-    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('description')}</div>,
+    cell: ({ row }) => <div className="px-4 py-2">{row.getValue('keterangan')}</div>,
   },
   {
     id: 'actions',
