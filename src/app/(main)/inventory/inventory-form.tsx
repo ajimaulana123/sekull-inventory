@@ -19,24 +19,18 @@ interface InventoryFormProps {
 }
 
 const defaultFormValues: InventoryFormValues = {
-  noData: '',
-  itemType: '-',
-  mainItemNumber: '-',
-  mainItemLetter: '-',
-  subItemType: '-',
-  brand: '-',
-  subItemTypeCode: '-',
-  subItemOrder: '-',
-  fundingSource: '-',
-  fundingItemOrder: '-',
-  area: '-',
-  subArea: '-',
-  procurementDate: null,
-  supplier: '-',
-  estimatedPrice: 0,
-  procurementStatus: '-',
+  itemType: '',
+  brand: '',
+  modelType: '',
+  quantity: 1,
+  unit: '',
+  condition: 'Baik',
+  price: 0,
+  area: '',
+  procurementDate: new Date(),
+  procurementStatus: 'baru',
   disposalStatus: 'aktif',
-  disposalDate: null
+  disposalDate: null,
 };
 
 // Function to generate a unique ID
@@ -53,19 +47,21 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
   
   const form = useForm<InventoryFormValues>({
     resolver: zodResolver(inventoryFormSchema),
-    defaultValues: initialData || defaultFormValues,
+    defaultValues: defaultFormValues,
   });
 
   useEffect(() => {
      if (initialData) {
-      form.reset({
+      const dataForForm: Partial<InventoryFormValues> & { noData?: string } = {
         ...initialData,
         procurementDate: initialData.procurementDate ? new Date(initialData.procurementDate) : null,
         disposalDate: initialData.disposalDate ? new Date(initialData.disposalDate) : null,
-      });
-      // Set initial formatted price for editing
-      if (initialData.estimatedPrice) {
-        setDisplayPrice(new Intl.NumberFormat('id-ID').format(initialData.estimatedPrice));
+      };
+      
+      form.reset(dataForForm as InventoryFormValues);
+      
+      if (initialData.price) {
+        setDisplayPrice(new Intl.NumberFormat('id-ID').format(initialData.price));
       } else {
         setDisplayPrice('');
       }
@@ -77,13 +73,10 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Remove all non-digit characters
     const numericValue = parseInt(value.replace(/[^0-9]/g, ''), 10) || 0;
 
-    // Update the form's internal state with the raw number
-    form.setValue('estimatedPrice', numericValue, { shouldValidate: true });
+    form.setValue('price', numericValue, { shouldValidate: true });
 
-    // Update the display state with the formatted number
     if (value) {
       setDisplayPrice(new Intl.NumberFormat('id-ID').format(numericValue));
     } else {
@@ -96,13 +89,15 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
     setIsLoading(true);
     try {
         const itemToSave: InventoryItem = {
+            ...initialData,
             ...values,
-            noData: isEditing ? values.noData! : generateUniqueId(),
-            itemVerificationCode: `${values.mainItemLetter}.${values.subItemTypeCode}.${values.subItemOrder}`,
-            fundingVerificationCode: `${values.fundingSource}.${values.fundingItemOrder}.${values.mainItemLetter}${values.subItemTypeCode}`,
-            totalRekapCode: `${values.mainItemLetter}${values.subItemTypeCode}`,
-            combinedFundingRekapCode: `${values.mainItemLetter}${values.subItemTypeCode}${values.fundingSource}`,
-            disposalRekapCode: values.disposalStatus === 'dihapus' ? `${values.mainItemLetter}${values.subItemTypeCode}-HAPUS` : undefined,
+            noData: isEditing && initialData?.noData ? initialData.noData : generateUniqueId(),
+            estimatedPrice: values.price,
+            itemVerificationCode: `${values.mainItemLetter || ''}.${values.subItemTypeCode || ''}.${values.subItemOrder || ''}`.replace(/^\.+|\.+$/g, ''),
+            fundingVerificationCode: `${values.fundingSource || ''}.${values.fundingItemOrder || ''}.${values.mainItemLetter || ''}${values.subItemTypeCode || ''}`.replace(/^\.+|\.+$/g, ''),
+            totalRekapCode: `${values.mainItemLetter || ''}${values.subItemTypeCode || ''}`,
+            combinedFundingRekapCode: `${values.mainItemLetter || ''}${values.subItemTypeCode || ''}${values.fundingSource || ''}`,
+            disposalRekapCode: values.disposalStatus === 'dihapus' ? `${values.mainItemLetter || ''}${values.subItemTypeCode || ''}-HAPUS` : undefined,
         };
       
       await saveInventoryItem(itemToSave);
@@ -128,55 +123,37 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         
-        {/* Section 1: Data Utama */}
-        <div>
-            <h3 className="text-lg font-medium mb-4">Data Utama Barang</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField control={form.control} name="itemType" render={({ field }) => ( <FormItem><FormLabel>Jenis Barang</FormLabel><FormControl><Input placeholder="MEJA" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="mainItemNumber" render={({ field }) => ( <FormItem><FormLabel>Induk No. Barang</FormLabel><FormControl><Input placeholder="1" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="mainItemLetter" render={({ field }) => ( <FormItem><FormLabel>Induk Huruf Barang</FormLabel><FormControl><Input placeholder="A" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="subItemType" render={({ field }) => ( <FormItem><FormLabel>Sub Jenis Barang</FormLabel><FormControl><Input placeholder="MEJA SISWA" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem><FormLabel>Merk/Tipe</FormLabel><FormControl><Input placeholder="-" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="subItemTypeCode" render={({ field }) => ( <FormItem><FormLabel>Sub Kode Jenis Barang</FormLabel><FormControl><Input placeholder="01" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="subItemOrder" render={({ field }) => ( <FormItem><FormLabel>Urut Sub Barang</FormLabel><FormControl><Input placeholder="1021" {...field} /></FormControl><FormMessage /></FormItem> )} />
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField control={form.control} name="itemType" render={({ field }) => ( <FormItem><FormLabel>Jenis Barang</FormLabel><FormControl><Input placeholder="Contoh: Meja Siswa" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+            <FormField control={form.control} name="brand" render={({ field }) => ( <FormItem><FormLabel>Merk</FormLabel><FormControl><Input placeholder="Contoh: Olympic" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+            <FormField control={form.control} name="modelType" render={({ field }) => ( <FormItem><FormLabel>Model/Tipe</FormLabel><FormControl><Input placeholder="Contoh: SD-01" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+            <FormField control={form.control} name="area" render={({ field }) => ( <FormItem><FormLabel>Area/Ruang</FormLabel><FormControl><Input placeholder="Contoh: Kelas 1A" {...field} value={field.value || ''} /></FormControl><FormItem /></FormItem> )} />
         </div>
         
         <Separator />
 
-        {/* Section 2: Pendanaan & Lokasi */}
-        <div>
-            <h3 className="text-lg font-medium mb-4">Pendanaan & Lokasi</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField control={form.control} name="fundingSource" render={({ field }) => ( <FormItem><FormLabel>Sumber Pendanaan</FormLabel><FormControl><Input placeholder="KOMITE" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="fundingItemOrder" render={({ field }) => ( <FormItem><FormLabel>Urut Barang Pendanaan</FormLabel><FormControl><Input placeholder="1021" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="area" render={({ field }) => ( <FormItem><FormLabel>Area/Ruang</FormLabel><FormControl><Input placeholder="KELAS" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="subArea" render={({ field }) => ( <FormItem><FormLabel>Sub-Area/Ruang</FormLabel><FormControl><Input placeholder="KELAS GEDUNG E 03.01" {...field} /></FormControl><FormMessage /></FormItem> )} />
-            </div>
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormField control={form.control} name="quantity" render={({ field }) => ( <FormItem><FormLabel>Jumlah</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} /></FormControl><FormMessage /></FormItem> )} />
+            <FormField control={form.control} name="unit" render={({ field }) => ( <FormItem><FormLabel>Satuan</FormLabel><FormControl><Input placeholder="Contoh: Buah" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )} />
+             <FormField control={form.control} name="price" render={({ field }) => ( <FormItem><FormLabel>Harga (Rp)</FormLabel><FormControl><Input placeholder="500.000" value={displayPrice} onChange={handlePriceChange} /></FormControl><FormMessage /></FormItem> )} />
         </div>
 
         <Separator />
-
-        {/* Section 3: Pengadaan */}
-        <div>
-            <h3 className="text-lg font-medium mb-4">Detail Pengadaan</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                 <FormField control={form.control} name="procurementDate" render={({ field }) => ( <FormItem><FormLabel>Tanggal Pengadaan</FormLabel><FormControl><DatePicker value={field.value ?? undefined} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
-                 <FormField control={form.control} name="supplier" render={({ field }) => ( <FormItem><FormLabel>Supplier/Distributor</FormLabel><FormControl><Input placeholder="-" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                 <FormField control={form.control} name="estimatedPrice" render={({ field }) => ( <FormItem><FormLabel>Perkiraan Harga (Rp)</FormLabel><FormControl><Input placeholder="500.000" value={displayPrice} onChange={handlePriceChange} /></FormControl><FormMessage /></FormItem> )} />
-                 <FormField control={form.control} name="procurementStatus" render={({ field }) => ( <FormItem><FormLabel>Status Pengadaan</FormLabel><FormControl><Input placeholder="Baru" {...field} /></FormControl><FormMessage /></FormItem> )} />
-            </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField control={form.control} name="condition" render={({ field }) => ( <FormItem><FormLabel>Kondisi Barang</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih kondisi" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Baik">Baik</SelectItem><SelectItem value="Rusak Ringan">Rusak Ringan</SelectItem><SelectItem value="Rusak Berat">Rusak Berat</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+            <FormField control={form.control} name="procurementStatus" render={({ field }) => ( <FormItem><FormLabel>Status Pengadaan</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="baru">Baru</SelectItem><SelectItem value="bekas">Bekas</SelectItem><SelectItem value="second">Second</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+             <FormField control={form.control} name="procurementDate" render={({ field }) => ( <FormItem><FormLabel>Tanggal Pengadaan</FormLabel><FormControl><DatePicker value={field.value ?? undefined} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
         </div>
         
         <Separator />
-
-        {/* Section 4: Status & Penghapusan */}
+        
          <div>
-            <h3 className="text-lg font-medium mb-4">Status & Penghapusan</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField control={form.control} name="disposalStatus" render={({ field }) => ( <FormItem><FormLabel>Status Barang</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="aktif">Aktif</SelectItem><SelectItem value="dihapus">Dihapus</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+            <h3 className="text-base font-medium mb-2">Status & Penghapusan</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+                <FormField control={form.control} name="disposalStatus" render={({ field }) => ( <FormItem><FormLabel>Status Barang</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Pilih status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="aktif">Aktif</SelectItem><SelectItem value="dihapus">Dihapus</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
                 {disposalStatus === 'dihapus' && (
                     <>
                         <FormField control={form.control} name="disposalDate" render={({ field }) => ( <FormItem><FormLabel>Tanggal Penghapusan</FormLabel><FormControl><DatePicker value={field.value ?? undefined} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )} />
@@ -185,8 +162,8 @@ export function InventoryForm({ onSuccess, initialData }: InventoryFormProps) {
             </div>
         </div>
 
-        <Button type="submit" disabled={isLoading} className="w-full mt-8">
-            {isLoading ? "Menyimpan..." : (isEditing ? "Simpan Perubahan" : "Simpan Data Inventaris")}
+        <Button type="submit" disabled={isLoading} className="w-full mt-6">
+            {isLoading ? "Menyimpan..." : (isEditing ? "Simpan Perubahan" : "Simpan Data")}
         </Button>
       </form>
     </Form>
