@@ -123,37 +123,38 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
     try {
         const data = new Uint8Array(fileData);
         const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+        // Assuming the relevant data is in the first sheet
         const sheetName = workbook.SheetNames[0];
         if (!sheetName) throw new Error("File Excel tidak memiliki sheet yang valid.");
 
         const worksheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null }) as (string | number | null)[][];
+        // Start reading from the second row (index 1) to skip the header
+        const json = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null, range: 1 }) as (string | number | null)[][];
         
-        const fileHeaders = json[0] as string[];
-        const fileDataRows = json.slice(1);
-
-        if (fileDataRows.length === 0) {
+        if (json.length === 0) {
             toast({ title: "File Kosong", description: "File Excel tidak berisi data." });
             return;
         }
         
         const itemsToSave: InventoryItem[] = [];
 
-        for (const [index, row] of fileDataRows.entries()) {
+        for (const [index, row] of json.entries()) {
+             // Excel row number is index + 2 (since we skip header row and index is 0-based)
             const rowIndex = index + 2;
             let mappedRow: Partial<InventoryItem> = {};
 
+            // We ignore the first column of the excel file (the 'No.' column)
             headerOrder.forEach((key, colIndex) => {
-                const rawValue = row[colIndex];
+                const rawValue = row[colIndex + 1]; // +1 to skip the first excel column
                 let value: any;
-
-                if (key === 'price') {
-                    const numValue = parseFloat(String(rawValue).replace(/[^0-9.-]+/g, ''));
+                
+                if (key === 'estimatedPrice' || key === 'price' || key === 'quantity') {
+                    const numValue = parseFloat(String(rawValue));
                     value = isNaN(numValue) ? 0 : numValue;
-                } else if (key === 'quantity') {
-                    const numValue = parseInt(String(rawValue), 10);
-                    value = isNaN(numValue) ? 0 : numValue;
-                } else {
+                } else if (key === 'procurementDate' || key === 'disposalDate') {
+                    value = parseFlexibleDate(rawValue);
+                }
+                else {
                     value = (rawValue === null || rawValue === undefined || String(rawValue).trim() === '') ? '-' : String(rawValue);
                 }
                 
@@ -165,8 +166,6 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
 
             const sanitized = {
                 ...mappedRow,
-                procurementDate: parseFlexibleDate(mappedRow.procurementDate),
-                disposalDate: parseFlexibleDate(mappedRow.disposalDate),
             }
 
             const parsed = inventoryItemSchema.safeParse(sanitized);
@@ -205,7 +204,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
         
         toast({
             title: "Impor Selesai",
-            description: `${importedItemsCount} dari ${fileDataRows.length} data berhasil diimpor.`,
+            description: `${importedItemsCount} dari ${json.length} data berhasil diimpor.`,
         });
 
     } catch (error: any) {
@@ -301,7 +300,7 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
                 className="ml-auto"
                 onClick={() => {
                     const selectedIds = table.getFilteredSelectedRowModel().rows.map(row => row.original.noData).filter(id => id);
-                    handleDeleteRequest(selectedIds);
+                    handleDeleteRequest(selectedIds as string[]);
                 }}
              >
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -460,4 +459,3 @@ export function InventoryTable({ data, refreshData }: InventoryTableProps) {
     </div>
   );
 }
-    
